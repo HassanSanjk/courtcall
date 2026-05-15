@@ -1,13 +1,17 @@
+// app.dart
 import 'package:flutter/material.dart';
+import 'core/theme/app_theme.dart';
+import 'features/organizer/dashboard/dashboard_screen.dart';
 
-// TODO: Wire up go_router, MultiProvider (all repositories + viewmodels), and AppTheme here.
-class CourtCallApp extends StatelessWidget {
-  const CourtCallApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('CourtCall'))),
+    return MaterialApp(
+      title: 'CourtCall',
+      theme: AppTheme.light,
+      home: const DashboardScreen(),
     );
   }
 }
