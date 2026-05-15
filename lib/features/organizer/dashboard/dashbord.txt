@@ -1,0 +1,199 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/kpi_card.dart';
+import '../../../core/widgets/session_card.dart';
+import 'dashboard_viewmodel.dart';
+
+class DashboardScreen extends StatelessWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => DashboardViewModel(),
+      child: const _DashboardView(),
+    );
+  }
+}
+
+class _DashboardView extends StatelessWidget {
+  const _DashboardView();
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<DashboardViewModel>();
+
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      body: SafeArea(
+        child: vm.loading
+            ? const Center(child: CircularProgressIndicator())
+            : CustomScrollView(
+                slivers: [
+                  _Header(),
+                  _KpiRow(vm: vm),
+                  _SectionTitle(title: 'Upcoming Sessions'),
+                  _SessionList(vm: vm),
+                ],
+              ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {},
+        backgroundColor: AppColors.primaryNavy,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('New Session',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+}
+class _Header extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Good morning,',
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Organizer',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryNavy,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: AppColors.primaryNavy,
+              child: const Text(
+                'OR',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KpiRow extends StatelessWidget {
+  final DashboardViewModel vm;
+  const _KpiRow({required this.vm});
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: KpiCard(
+                label: 'Upcoming',
+                value: '${vm.totalSessions}',
+                icon: Icons.sports_basketball_outlined,
+                accentColor: AppColors.primaryNavy,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: KpiCard(
+                label: 'Total Slots',
+                value: '${vm.totalPlayers}',
+                icon: Icons.people_outline,
+                accentColor: AppColors.accentGreen,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: KpiCard(
+                label: 'Pending Pay',
+                value: '—',
+                icon: Icons.payments_outlined,
+                accentColor: AppColors.alertAmber,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  const _SectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primaryNavy,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionList extends StatelessWidget {
+  final DashboardViewModel vm;
+  const _SessionList({required this.vm});
+
+  @override
+  Widget build(BuildContext context) {
+    if (vm.sessions.isEmpty) {
+      return const SliverFillRemaining(
+        child: Center(
+          child: Text('No upcoming sessions.',
+              style: TextStyle(color: Colors.black45)),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
+            final s = vm.sessions[i];
+            return SessionCard(
+              title: s['title'] as String,
+              date: s['date'] as String,
+              time: s['time'] as String,
+              venue: s['venue'] as String,
+              playerCount: 0,
+              maxPlayers: (s['maxPlayers'] as int?) ?? 0,
+              status: s['status'] as String? ?? 'upcoming',
+            );
+          },
+          childCount: vm.sessions.length,
+        ),
+      ),
+    );
+  }
+}
