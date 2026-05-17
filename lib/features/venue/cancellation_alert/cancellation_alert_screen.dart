@@ -19,7 +19,6 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
     super.initState();
     _viewModel = CancellationAlertViewModel();
     _viewModel.addListener(() => setState(() {}));
-    _viewModel.loadData();
   }
 
   @override
@@ -30,6 +29,8 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final alert = _viewModel.alert;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
       body: _viewModel.isLoading
@@ -43,16 +44,15 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 4),
-                        _buildBookingDetailsCard(),
+                        _buildBookingDetailsCard(alert),
                         const SizedBox(height: 16),
-                        _buildLostRevenueCard(),
+                        _buildLostRevenueCard(alert),
                         const SizedBox(height: 16),
-                        _buildOrganizerRow(),
+                        _buildOrganizerRow(alert),
                         const SizedBox(height: 16),
                         _buildCancellationHistory(),
                         const SizedBox(height: 24),
-                        _buildActionButtons(),
+                        _buildActionButtons(alert),
                         const SizedBox(height: 16),
                       ],
                     ),
@@ -63,8 +63,6 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
     );
   }
 
-  // ─── Hero Header ───────────────────────────────────────────────────────────
-
   Widget _buildHeroHeader() {
     return Container(
       width: double.infinity,
@@ -73,7 +71,6 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
         bottom: false,
         child: Column(
           children: [
-            // Back button row
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
               child: Row(
@@ -83,22 +80,17 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   const Expanded(
-                    child: Text(
-                      'Cancellation Alert',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: Text('Cancellation Alert',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
                   ),
                   const SizedBox(width: 48),
                 ],
               ),
             ),
-
-            // Hero content
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
               child: Column(
@@ -110,31 +102,22 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
                       color: Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                    child: const Icon(Icons.warning_amber_rounded,
+                        color: Colors.white, size: 28),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Late Cancellation',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  const Text('Late Cancellation',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
                   const SizedBox(height: 4),
-                  Text(
-                    _viewModel.noticeLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white.withOpacity(0.75),
-                      letterSpacing: 1.2,
-                    ),
-                  ),
+                  Text(_viewModel.noticeLabel,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white.withOpacity(0.75),
+                          letterSpacing: 1.2)),
                 ],
               ),
             ),
@@ -144,125 +127,94 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
     );
   }
 
-  // ─── Booking Details Card ──────────────────────────────────────────────────
-
-  Widget _buildBookingDetailsCard() {
-    final alert = _viewModel.alert!;
+  Widget _buildBookingDetailsCard(Map<String, dynamic> alert) {
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'BOOKING DETAILS',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF9CA3AF),
-              letterSpacing: 0.8,
-            ),
-          ),
+          const Text('BOOKING DETAILS',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF9CA3AF),
+                  letterSpacing: 0.8)),
           const SizedBox(height: 12),
-          Text(
-            alert.sessionName,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
-            ),
-          ),
+          Text('${alert['sessionName']}',
+              style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E))),
           const SizedBox(height: 10),
-          _DetailRow(label: 'Organizer', value: alert.organizerName),
-          _DetailRow(label: 'Court', value: alert.court),
-          _DetailRow(label: 'Time', value: alert.timeRange),
-          _DetailRow(label: 'Date', value: alert.dateLabel),
+          _DetailRow(label: 'Organizer', value: '${alert['organizerName']}'),
+          _DetailRow(label: 'Court', value: '${alert['court']}'),
+          _DetailRow(label: 'Time', value: '${alert['timeRange']}'),
+          _DetailRow(label: 'Date', value: '${alert['dateLabel']}'),
         ],
       ),
     );
   }
 
-  // ─── Lost Revenue Card ─────────────────────────────────────────────────────
-
-  Widget _buildLostRevenueCard() {
-    final alert = _viewModel.alert!;
+  Widget _buildLostRevenueCard(Map<String, dynamic> alert) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF7ED),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFBB040).withOpacity(0.4)),
+        border:
+            Border.all(color: const Color(0xFFFBB040).withOpacity(0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'LOST REVENUE',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFFD97706),
-              letterSpacing: 0.8,
-            ),
-          ),
+          const Text('LOST REVENUE',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFD97706),
+                  letterSpacing: 0.8)),
           const SizedBox(height: 6),
-          Text(
-            alert.lostRevenue,
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFD97706),
-            ),
-          ),
-          if (alert.depositCollected != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              alert.depositCollected!,
+          Text('${alert['lostRevenue']}',
               style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF6B7280),
-              ),
-            ),
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFD97706))),
+          if (alert['depositCollected'] != null) ...[
+            const SizedBox(height: 4),
+            Text('${alert['depositCollected']}',
+                style: const TextStyle(
+                    fontSize: 12, color: Color(0xFF6B7280))),
           ],
         ],
       ),
     );
   }
 
-  // ─── Organizer Row ─────────────────────────────────────────────────────────
-
-  Widget _buildOrganizerRow() {
-    final alert = _viewModel.alert!;
+  Widget _buildOrganizerRow(Map<String, dynamic> alert) {
+    final name = '${alert['organizerName']}';
     return _Card(
       child: Row(
         children: [
           CircleAvatar(
             radius: 20,
             backgroundColor: const Color(0xFF1A1A2E),
-            child: Text(
-              alert.organizerName[0].toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
+            child: Text(name[0].toUpperCase(),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16)),
           ),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                alert.organizerName,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A2E),
-                ),
-              ),
-              const Text(
-                'Organizer',
-                style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-              ),
+              Text(name,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A2E))),
+              const Text('Organizer',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
             ],
           ),
         ],
@@ -270,23 +222,19 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
     );
   }
 
-  // ─── Cancellation History ──────────────────────────────────────────────────
-
   Widget _buildCancellationHistory() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Cancellation History',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1A1A2E),
-          ),
-        ),
+        const Text('Cancellation History',
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A2E))),
         const SizedBox(height: 10),
-        ..._viewModel.cancellationHistory.map(
-          (item) => Padding(
+        ..._viewModel.history.map((item) {
+          final h = (item as Map).cast<String, dynamic>();
+          return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,7 +245,7 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: item.isWarning
+                      color: h['isWarning'] == true
                           ? const Color(0xFFFBB040)
                           : const Color(0xFF0D7A3E),
                       shape: BoxShape.circle,
@@ -309,34 +257,29 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
                   child: RichText(
                     text: TextSpan(
                       style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF6B7280),
-                      ),
+                          fontSize: 13, color: Color(0xFF6B7280)),
                       children: [
-                        TextSpan(text: item.prefixText),
+                        TextSpan(text: '${h['prefixText']}'),
                         TextSpan(
-                          text: item.highlightText,
+                          text: '${h['highlightText']}',
                           style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A2E),
-                          ),
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1A1A2E)),
                         ),
-                        TextSpan(text: item.suffixText),
+                        TextSpan(text: '${h['suffixText']}'),
                       ],
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ),
+          );
+        }),
       ],
     );
   }
 
-  // ─── Action Buttons ────────────────────────────────────────────────────────
-
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(Map<String, dynamic> alert) {
     return Column(
       children: [
         SizedBox(
@@ -350,8 +293,7 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
               backgroundColor: const Color(0xFF1A1A2E),
               disabledBackgroundColor: const Color(0xFFD1D5DB),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+                  borderRadius: BorderRadius.circular(14)),
             ),
             child: _viewModel.isMarkingAvailable
                 ? const SizedBox(
@@ -360,14 +302,11 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
                     child: CircularProgressIndicator(
                         color: Colors.white, strokeWidth: 2),
                   )
-                : const Text(
-                    'Mark Slot Available',
+                : const Text('Mark Slot Available',
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
           ),
         ),
         const SizedBox(height: 12),
@@ -379,18 +318,16 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
             icon: const Icon(Icons.phone_outlined,
                 size: 18, color: Color(0xFF1A1A2E)),
             label: Text(
-              'Contact Organizer (${_viewModel.alert?.organizerName ?? ''})',
+              'Contact Organizer (${alert['organizerName']})',
               style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A2E),
-              ),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A2E)),
             ),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Color(0xFF1A1A2E), width: 1.5),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+                  borderRadius: BorderRadius.circular(14)),
             ),
           ),
         ),
@@ -399,11 +336,10 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
   }
 }
 
-// ─── Reusable Widgets ──────────────────────────────────────────────────────────
+// ─── Widgets ───────────────────────────────────────────────────────────────────
 
 class _Card extends StatelessWidget {
   final Widget child;
-
   const _Card({required this.child});
 
   @override
@@ -416,10 +352,9 @@ class _Card extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 1),
-          ),
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 1))
         ],
       ),
       child: child,
@@ -430,7 +365,6 @@ class _Card extends StatelessWidget {
 class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
-
   const _DetailRow({required this.label, required this.value});
 
   @override
@@ -441,22 +375,15 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 80,
-            child: Text(
-              '$label:',
+            child: Text('$label:',
+                style: const TextStyle(
+                    fontSize: 13, color: Color(0xFF9CA3AF))),
+          ),
+          Text(value,
               style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF9CA3AF),
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E),
-            ),
-          ),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A2E))),
         ],
       ),
     );

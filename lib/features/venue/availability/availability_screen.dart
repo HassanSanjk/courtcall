@@ -18,7 +18,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     super.initState();
     _viewModel = AvailabilityViewModel();
     _viewModel.addListener(() => setState(() {}));
-    _viewModel.loadData();
   }
 
   @override
@@ -48,8 +47,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     );
   }
 
-  // ─── Header ───────────────────────────────────────────────────────────────
-
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 12, 16, 4),
@@ -60,23 +57,18 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
             onPressed: () => Navigator.of(context).pop(),
           ),
           const Expanded(
-            child: Text(
-              'Manage Courts',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
-              ),
-            ),
+            child: Text('Manage Courts',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A2E))),
           ),
-          const SizedBox(width: 48), // balance back button
+          const SizedBox(width: 48),
         ],
       ),
     );
   }
-
-  // ─── Week Navigator ────────────────────────────────────────────────────────
 
   Widget _buildWeekNavigator() {
     return Padding(
@@ -84,28 +76,17 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _NavArrowButton(
-            icon: Icons.chevron_left,
-            onTap: _viewModel.previousWeek,
-          ),
-          Text(
-            _viewModel.weekRangeLabel,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E),
-            ),
-          ),
-          _NavArrowButton(
-            icon: Icons.chevron_right,
-            onTap: _viewModel.nextWeek,
-          ),
+          _NavArrow(icon: Icons.chevron_left, onTap: _viewModel.previousWeek),
+          Text(_viewModel.weekRangeLabel,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A2E))),
+          _NavArrow(icon: Icons.chevron_right, onTap: _viewModel.nextWeek),
         ],
       ),
     );
   }
-
-  // ─── Court Tabs ────────────────────────────────────────────────────────────
 
   Widget _buildCourtTabs() {
     return SizedBox(
@@ -116,13 +97,13 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         itemCount: _viewModel.courts.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final court = _viewModel.courts[index];
           final isSelected = _viewModel.selectedCourtIndex == index;
           return GestureDetector(
             onTap: () => _viewModel.selectCourt(index),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFF1A1A2E)
@@ -135,12 +116,13 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                 ),
               ),
               child: Text(
-                court,
+                _viewModel.courts[index],
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : const Color(0xFF6B7280),
-                ),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected
+                        ? Colors.white
+                        : const Color(0xFF6B7280)),
               ),
             ),
           );
@@ -149,25 +131,24 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     );
   }
 
-  // ─── Slot List ─────────────────────────────────────────────────────────────
-
   Widget _buildSlotList() {
-    final days = _viewModel.daysWithSlots;
+    final days = _viewModel.groupedDays;
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       itemCount: days.length,
       itemBuilder: (context, index) {
         final day = days[index];
+        final slots =
+            (day['slots'] as List).cast<Map<String, dynamic>>();
         return _DaySection(
           day: day,
+          slots: slots,
           onToggle: (slotId, value) =>
-              _viewModel.toggleSlot(day.date, slotId, value),
+              _viewModel.toggleSlot(slotId, value),
         );
       },
     );
   }
-
-  // ─── Save Button ───────────────────────────────────────────────────────────
 
   Widget _buildSaveButton() {
     return Container(
@@ -176,10 +157,9 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, -2))
         ],
       ),
       child: SizedBox(
@@ -191,42 +171,42 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
             backgroundColor: const Color(0xFF1A1A2E),
             disabledBackgroundColor: const Color(0xFFD1D5DB),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+                borderRadius: BorderRadius.circular(14)),
           ),
           child: _viewModel.isSaving
               ? const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
+                      color: Colors.white, strokeWidth: 2),
                 )
-              : const Text(
-                  'Save Changes',
+              : const Text('Save Changes',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
         ),
       ),
     );
   }
 }
 
-// ─── Day Section ───────────────────────────────────────────────────────────────
+// ─── Widgets ───────────────────────────────────────────────────────────────────
 
 class _DaySection extends StatelessWidget {
-  final DayAvailability day;
+  final Map<String, dynamic> day;
+  final List<Map<String, dynamic>> slots;
   final void Function(String slotId, bool value) onToggle;
 
-  const _DaySection({required this.day, required this.onToggle});
+  const _DaySection({
+    required this.day,
+    required this.slots,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isToday = day['isToday'] == true;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -238,23 +218,20 @@ class _DaySection extends StatelessWidget {
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: day.isToday
+                  color: isToday
                       ? const Color(0xFF0D7A3E)
                       : const Color(0xFF9CA3AF),
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                day.label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: day.isToday
-                      ? const Color(0xFF1A1A2E)
-                      : const Color(0xFF6B7280),
-                ),
-              ),
+              Text('${day['dateLabel']}',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isToday
+                          ? const Color(0xFF1A1A2E)
+                          : const Color(0xFF6B7280))),
             ],
           ),
         ),
@@ -265,21 +242,20 @@ class _DaySection extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 1),
-              ),
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 1))
             ],
           ),
           child: Column(
-            children: day.slots.asMap().entries.map((entry) {
+            children: slots.asMap().entries.map((entry) {
               final i = entry.key;
               final slot = entry.value;
-              final isLast = i == day.slots.length - 1;
+              final isLast = i == slots.length - 1;
               return _SlotRow(
                 slot: slot,
                 isLast: isLast,
-                onToggle: (val) => onToggle(slot.id, val),
+                onToggle: (val) => onToggle(slot['id'], val),
               );
             }).toList(),
           ),
@@ -289,10 +265,8 @@ class _DaySection extends StatelessWidget {
   }
 }
 
-// ─── Slot Row ──────────────────────────────────────────────────────────────────
-
 class _SlotRow extends StatelessWidget {
-  final TimeSlot slot;
+  final Map<String, dynamic> slot;
   final bool isLast;
   final ValueChanged<bool> onToggle;
 
@@ -302,11 +276,11 @@ class _SlotRow extends StatelessWidget {
     required this.onToggle,
   });
 
+  bool get _canToggle =>
+      slot['status'] == 'available' || slot['status'] == 'open';
+
   @override
   Widget build(BuildContext context) {
-    final canToggle = slot.status == SlotStatus.available ||
-        slot.status == SlotStatus.open;
-
     return Column(
       children: [
         Padding(
@@ -314,26 +288,22 @@ class _SlotRow extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  slot.timeLabel,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: canToggle
-                        ? const Color(0xFF1A1A2E)
-                        : const Color(0xFF9CA3AF),
-                  ),
-                ),
+                child: Text('${slot['timeLabel']}',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _canToggle
+                            ? const Color(0xFF1A1A2E)
+                            : const Color(0xFF9CA3AF))),
               ),
-              if (slot.status == SlotStatus.booked)
-                _StatusBadge(label: 'BOOKED', color: const Color(0xFF1A1A2E))
-              else if (slot.status == SlotStatus.maintenance)
-                _StatusBadge(
-                    label: 'MAINTENANCE', color: const Color(0xFF6B7280)),
+              if (slot['status'] == 'booked')
+                _Badge(label: 'BOOKED', color: const Color(0xFF1A1A2E)),
+              if (slot['status'] == 'maintenance')
+                _Badge(label: 'MAINTENANCE', color: const Color(0xFF6B7280)),
               const SizedBox(width: 12),
               Switch(
-                value: slot.isEnabled,
-                onChanged: canToggle ? onToggle : null,
+                value: slot['isEnabled'] == true,
+                onChanged: _canToggle ? onToggle : null,
                 activeColor: Colors.white,
                 activeTrackColor: const Color(0xFF0D7A3E),
                 inactiveThumbColor: Colors.white,
@@ -343,20 +313,21 @@ class _SlotRow extends StatelessWidget {
           ),
         ),
         if (!isLast)
-          const Divider(height: 1, indent: 16, endIndent: 16,
+          const Divider(
+              height: 1,
+              indent: 16,
+              endIndent: 16,
               color: Color(0xFFF3F4F6)),
       ],
     );
   }
 }
 
-// ─── Status Badge ──────────────────────────────────────────────────────────────
-
-class _StatusBadge extends StatelessWidget {
+class _Badge extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _StatusBadge({required this.label, required this.color});
+  const _Badge({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -367,26 +338,21 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: color,
-          letterSpacing: 0.5,
-        ),
-      ),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+              letterSpacing: 0.5)),
     );
   }
 }
 
-// ─── Nav Arrow Button ─────────────────────────────────────────────────────────
-
-class _NavArrowButton extends StatelessWidget {
+class _NavArrow extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _NavArrowButton({required this.icon, required this.onTap});
+  const _NavArrow({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
