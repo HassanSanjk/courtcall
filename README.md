@@ -1,18 +1,60 @@
-# courtcall
+# CourtCall
 
-A new Flutter project.
+A mobile app for coordinating informal sports sessions in Malaysia. Built with Flutter and Firebase.
+
+## About
+
+CourtCall connects **organizers**, **players**, and **venue owners** in a single platform - no more scattered WhatsApp chats for RSVPs, payments, and court bookings. Create a session, invite your group, collect fees via DuitNow QR, and manage everything from one dashboard.
+
+## Tech Stack
+
+- **Framework:** Flutter (Dart)
+- **Architecture:** MVVM with Provider
+- **Backend:** Firebase (Firestore, Auth, Cloud Messaging)
+- **Maps:** Google Maps Flutter
+- **Navigation:** GoRouter
+
+## Features
+
+### Session Organizer
+- Create & schedule sessions in under 30 seconds
+- Live RSVP tracking with reminders
+- Payment ledger with DuitNow QR / FPX
+- Cancellation broadcast & waitlist auto-promotion
+
+### Regular Player
+- One-tap RSVP via push or WhatsApp link
+- See who else is attending before committing
+- Pay session fees in-app
+- Join waitlists with auto-promotion
+
+### Venue Owner
+- Publish live court availability
+- Manage bookings & deposits
+- Broadcast freed slots for instant resale
+- View occupancy & revenue analytics
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+```bash
+flutter pub get
+flutter run
+```
 
-A few resources to get you started if this is your first Flutter project:
+Make sure you have a Firebase project set up and the `google-services.json` / `GoogleService-Info.plist` placed in the respective platform folders.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Project Structure
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
- updated branch stuff
+```
+lib/
+├── core/           # Theme, widgets, router
+├── features/       # Screens & ViewModels by role
+│   ├── organizer/
+│   ├── venue/
+│   └── maps/
+└── repositories/   # Data layer (Firestore + mocks)
+```
+
+## Team
+
+Group 5 - MAE Project, 2026
