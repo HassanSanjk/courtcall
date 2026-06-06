@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "288729272551",
+    "project_id": "courtcall-app",
+    "storage_bucket": "courtcall-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:288729272551:android:458be720feeb14f188d242",
+        "android_client_info": {
+          "package_name": "com.example.courtcall"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtIU9TfnnVR5XCaKpZp-9FpLxPMD_Yy1k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
