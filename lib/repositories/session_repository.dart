@@ -1,6 +1,7 @@
-// TODO: replace dynamic with Session model once defined by Hassan.
+import '../models/session.dart';
+
 abstract class SessionRepository {
-  Stream<List<dynamic>> watchUpcomingSessions(String organizerId);
+  Stream<List<Session>> watchUpcomingSessions(String organizerId);
   Future<String> createSession(Map<String, dynamic> data);
   Future<void> updateSession(String sessionId, Map<String, dynamic> data);
   Future<void> cancelSession(String sessionId);

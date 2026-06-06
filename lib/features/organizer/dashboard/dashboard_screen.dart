@@ -1,195 +1,237 @@
 import 'package:flutter/material.dart';
-
+import 'package:provider/provider.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/kpi_card.dart';
+import '../../../core/widgets/session_card.dart';
+import '../../../models/session.dart';
 import '../create_session/create_session_screen.dart';
+import '../create_session/create_session_viewmodel.dart';
 import '../rsvp_tracker/rsvp_tracker_screen.dart';
-import '../payment_ledger/payment_ledger_screen.dart';
+import '../rsvp_tracker/rsvp_tracker_viewmodel.dart';
+import 'dashboard_viewmodel.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 246, 249),
-      appBar: AppBar(
-        title: const Text(
-          'CourtCall',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Color.fromARGB(255, 27, 42, 74),
-          ),
-        ),
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-        elevation: 0,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+    return ChangeNotifierProvider(
+      create: (_) => DashboardViewModel(),
+      child: const _DashboardView(),
+    );
+  }
+}
 
-            // ===== Blue session card (your existing code, unchanged) =====
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B2A4A),
-                borderRadius: BorderRadius.circular(16),
+class _DashboardView extends StatelessWidget {
+  const _DashboardView();
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<DashboardViewModel>();
+
+    return Scaffold(
+      backgroundColor: AppColors.backgroundAsh,
+      body: SafeArea(
+        child: vm.loading
+            ? const Center(child: CircularProgressIndicator())
+            : CustomScrollView(
+                slivers: [
+                  const _Header(),
+                  _KpiRow(vm: vm),
+                  const _SectionTitle(title: 'Upcoming Sessions'),
+                  _SessionList(vm: vm),
+                ],
               ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openCreateSession(context),
+        backgroundColor: AppColors.primaryNavy,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'New Session',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  void _openCreateSession(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => CreateSessionViewModel(),
+          child: const CreateSessionScreen(),
+        ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+        child: Row(
+          children: [
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Nexus Futsal — Court 3',
+                  Text(
+                    'Good morning,',
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Organizer',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryNavy,
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Friday 9 May · 8:00PM–10:00PM',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'RSVP Progress',
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.all(Radius.circular(4)),
-                          child: LinearProgressIndicator(
-                            value: 9 / 12,
-                            minHeight: 8,
-                            backgroundColor: Colors.white24,
-                            valueColor: const AlwaysStoppedAnimation(Color(0xFF00E676)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        '9 of 12',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                // Button 1: Create Session
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => CreateSessionScreen()));
-                    },
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        children: const [
-                          Icon(Icons.add, color: Color(0xFF1B2A4A), size: 26),
-                          SizedBox(height: 8),
-                          Text(
-                            'Create\nSession',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF1B2A4A),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+            const CircleAvatar(
+              radius: 22,
+              backgroundColor: AppColors.primaryNavy,
+              child: Text(
+                'OR',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
                 ),
-
-                const SizedBox(width: 12),
-
-                // Button 2: Send Reminder
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const PaymentLedgerScreen()));
-                    },
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        children: const [
-                          Icon(Icons.send, color: Color(0xFF1B2A4A), size: 26),
-                          SizedBox(height: 8),
-                          Text(
-                            'Send\nReminder',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF1B2A4A),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                // Button 3: View Payments
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => RsvpTrackerScreen()));
-                    },
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        children: const [
-                          Icon(Icons.description_outlined, color: Color(0xFF1B2A4A), size: 26),
-                          SizedBox(height: 8),
-                          Text(
-                            'View\nPayments',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF1B2A4A),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KpiRow extends StatelessWidget {
+  final DashboardViewModel vm;
+  const _KpiRow({required this.vm});
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: KpiCard(
+                label: 'Upcoming',
+                value: '${vm.totalSessions}',
+                icon: Icons.sports_basketball_outlined,
+                accentColor: AppColors.primaryNavy,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: KpiCard(
+                label: 'Total Slots',
+                value: '${vm.totalPlayers}',
+                icon: Icons.people_outline,
+                accentColor: AppColors.accentGreen,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: KpiCard(
+                label: 'Pending Pay',
+                value: vm.unpaidCount > 0 ? '${vm.unpaidCount}' : '—',
+                icon: Icons.payments_outlined,
+                accentColor: AppColors.alertAmber,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  const _SectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primaryNavy,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionList extends StatelessWidget {
+  final DashboardViewModel vm;
+  const _SessionList({required this.vm});
+
+  @override
+  Widget build(BuildContext context) {
+    if (vm.sessions.isEmpty) {
+      return const SliverFillRemaining(
+        child: Center(
+          child: Text(
+            'No upcoming sessions.',
+            style: TextStyle(color: Colors.black45),
+          ),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
+            final Session s = vm.sessions[i];
+            return SessionCard(
+              title: '${s.sport} · ${s.courtName}',
+              date: s.date,
+              time: s.startTime,
+              venue: s.venueName,
+              playerCount: s.confirmedCount,
+              maxPlayers: s.maxPlayers,
+              status: s.status,
+              onTap: () => _openRsvpTracker(context, s),
+            );
+          },
+          childCount: vm.sessions.length,
+        ),
+      ),
+    );
+  }
+
+  void _openRsvpTracker(BuildContext context, Session s) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => RsvpTrackerViewModel()),
+          ],
+          child: const RsvpTrackerScreen(),
         ),
       ),
     );
