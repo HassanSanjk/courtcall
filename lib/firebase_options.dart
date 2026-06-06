@@ -83,5 +83,4 @@ class DefaultFirebaseOptions {
     authDomain: 'courtcall-app.firebaseapp.com',
     storageBucket: 'courtcall-app.firebasestorage.app',
   );
-
 }

@@ -10,6 +10,7 @@ class SessionCard extends StatelessWidget {
   final int playerCount;
   final int maxPlayers;
   final String status;
+  final String? sport;
   final VoidCallback? onTap;
 
   const SessionCard({
@@ -21,8 +22,24 @@ class SessionCard extends StatelessWidget {
     required this.playerCount,
     required this.maxPlayers,
     this.status = 'upcoming',
+    this.sport,
     this.onTap,
   });
+
+  static IconData _sportIcon(String? s) {
+    switch (s?.toLowerCase()) {
+      case 'futsal':
+        return Icons.sports_soccer;
+      case 'badminton':
+        return Icons.sports_tennis;
+      case 'basketball':
+        return Icons.sports_basketball;
+      case 'volleyball':
+        return Icons.sports_volleyball;
+      default:
+        return Icons.sports;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +61,7 @@ class SessionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _DateBadge(date: date, time: time),
+            _DateBadge(date: date, time: time, sport: sport),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -102,13 +119,15 @@ class SessionCard extends StatelessWidget {
 class _DateBadge extends StatelessWidget {
   final String date;
   final String time;
+  final String? sport;
 
-  const _DateBadge({required this.date, required this.time});
+  const _DateBadge({required this.date, required this.time, this.sport});
 
   @override
   Widget build(BuildContext context) {
     final parts = date.split('-');
-    final month = _monthAbbr(int.tryParse(parts.length > 1 ? parts[1] : '1') ?? 1);
+    final month =
+        _monthAbbr(int.tryParse(parts.length > 1 ? parts[1] : '1') ?? 1);
     final day = parts.length > 2 ? parts[2] : '--';
 
     return Container(
@@ -120,14 +139,18 @@ class _DateBadge extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(
-            month,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryNavy,
+          if (sport != null)
+            Icon(SessionCard._sportIcon(sport), size: 14,
+                color: AppColors.primaryNavy)
+          else
+            Text(
+              month,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryNavy,
+              ),
             ),
-          ),
           Text(
             day,
             style: const TextStyle(

@@ -1,18 +1,21 @@
 // features/venue/cancellation_alert/cancellation_alert_viewmodel.dart
 
 import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../repositories/cancellation_repository.dart';
 import '../../../repositories/mocks/mock_cancellation_repository.dart';
 
 class CancellationAlertViewModel extends ChangeNotifier {
   final CancellationRepository _repo;
+  final String _venueId;
 
   Map<String, dynamic> _alert = {};
   bool isLoading = true;
   bool isMarkingAvailable = false;
 
-  CancellationAlertViewModel({CancellationRepository? repo})
-      : _repo = repo ?? MockCancellationRepository() {
+  CancellationAlertViewModel({CancellationRepository? repo, required String venueId})
+      : _repo = repo ?? MockCancellationRepository(),
+        _venueId = venueId {
     _init();
   }
 
@@ -27,7 +30,7 @@ class CancellationAlertViewModel extends ChangeNotifier {
   }
 
   void _init() {
-    _repo.watchCancellationAlert('venue_1').listen((data) {
+    _repo.watchCancellationAlert(_venueId).listen((data) {
       _alert = data;
       isLoading = false;
       notifyListeners();
@@ -38,14 +41,18 @@ class CancellationAlertViewModel extends ChangeNotifier {
     isMarkingAvailable = true;
     notifyListeners();
 
-    await _repo.markSlotAvailable('venue_1', _alert['slotId'] ?? '');
+    await _repo.markSlotAvailable(_venueId, _alert['slotId'] ?? '');
 
     isMarkingAvailable = false;
     notifyListeners();
   }
 
-  void contactOrganizer() {
-    // Replace with url_launcher: tel:${_alert['organizerPhone']}
-    debugPrint('Contacting: ${_alert['organizerName']}');
+  Future<void> contactOrganizer() async {
+    final phone = _alert['organizerPhone'] as String?;
+    if (phone == null || phone.isEmpty) return;
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 }

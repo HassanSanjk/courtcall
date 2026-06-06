@@ -1,7 +1,9 @@
 // features/maps/map_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:courtcall/repositories/firebase/firebase_map_repository.dart';
 import 'map_viewmodel.dart';
 
 class MapScreen extends StatefulWidget {
@@ -24,7 +26,9 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel = MapViewModel();
+    _viewModel = MapViewModel(
+      repo: FirebaseMapRepository(),
+    );
     _viewModel.addListener(() => setState(() {}));
   }
 
@@ -68,7 +72,7 @@ class _MapScreenState extends State<MapScreen> {
                 children: [
                   _MapIconButton(
                     icon: Icons.arrow_back,
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: () => context.pop(),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -80,7 +84,7 @@ class _MapScreenState extends State<MapScreen> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -176,7 +180,7 @@ class _SessionPreviewCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -184,16 +188,15 @@ class _SessionPreviewCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Venue icon
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.circular(12),
+            // Venue image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/images/venue_placeholder.png',
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
               ),
-              child: const Icon(Icons.sports_soccer,
-                  color: Colors.white, size: 24),
             ),
             const SizedBox(width: 14),
 
@@ -254,7 +257,7 @@ class _MapIconButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

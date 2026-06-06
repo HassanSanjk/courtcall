@@ -1,10 +1,17 @@
 // features/venue/availability/availability_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:courtcall/repositories/availability_repository.dart';
+import 'package:courtcall/repositories/firebase/firebase_availability_repository.dart';
 import 'availability_viewmodel.dart';
 
 class AvailabilityScreen extends StatefulWidget {
-  const AvailabilityScreen({super.key});
+  final String venueId;
+
+  const AvailabilityScreen({super.key, required this.venueId, this.repo});
+
+  final AvailabilityRepository? repo;
 
   @override
   State<AvailabilityScreen> createState() => _AvailabilityScreenState();
@@ -16,8 +23,11 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel = AvailabilityViewModel();
-    _viewModel.addListener(() => setState(() {}));
+    _viewModel = AvailabilityViewModel(
+      repo: widget.repo ?? FirebaseAvailabilityRepository(),
+      venueId: widget.venueId,
+    );
+    _viewModel.addListener(() { if (mounted) setState(() {}); });
   }
 
   @override
@@ -33,28 +43,34 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       body: _viewModel.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  _buildWeekNavigator(),
-                  _buildCourtTabs(),
-                  const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                  Expanded(child: _buildSlotList()),
-                  _buildSaveButton(),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth > 420;
+                  final pad = isWide ? 20.0 : 16.0;
+                  return Column(
+                    children: [
+                      _buildHeader(pad),
+                      _buildWeekNavigator(pad),
+                      _buildCourtTabs(pad),
+                      const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                      Expanded(child: _buildSlotList(pad)),
+                      _buildSaveButton(),
+                    ],
+                  );
+                },
               ),
             ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(double pad) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 12, 16, 4),
+      padding: EdgeInsets.fromLTRB(4, 12, pad, 4),
       child: Row(
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A2E)),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => context.go('/venue/dashboard?venueId=${widget.venueId}'),
           ),
           const Expanded(
             child: Text('Manage Courts',
@@ -70,9 +86,9 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     );
   }
 
-  Widget _buildWeekNavigator() {
+  Widget _buildWeekNavigator(double pad) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: pad, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -88,14 +104,14 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     );
   }
 
-  Widget _buildCourtTabs() {
+  Widget _buildCourtTabs(double pad) {
     return SizedBox(
       height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: pad),
         itemCount: _viewModel.courts.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final isSelected = _viewModel.selectedCourtIndex == index;
           return GestureDetector(
@@ -131,10 +147,10 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     );
   }
 
-  Widget _buildSlotList() {
+  Widget _buildSlotList(double pad) {
     final days = _viewModel.groupedDays;
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: EdgeInsets.fromLTRB(pad, 12, pad, 8),
       itemCount: days.length,
       itemBuilder: (context, index) {
         final day = days[index];
@@ -157,7 +173,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 12,
               offset: const Offset(0, -2))
         ],
@@ -242,7 +258,7 @@ class _DaySection extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 8,
                   offset: const Offset(0, 1))
             ],
@@ -304,7 +320,7 @@ class _SlotRow extends StatelessWidget {
               Switch(
                 value: slot['isEnabled'] == true,
                 onChanged: _canToggle ? onToggle : null,
-                activeColor: Colors.white,
+                activeThumbColor: Colors.white,
                 activeTrackColor: const Color(0xFF0D7A3E),
                 inactiveThumbColor: Colors.white,
                 inactiveTrackColor: const Color(0xFFD1D5DB),
@@ -334,9 +350,9 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(label,
           style: TextStyle(

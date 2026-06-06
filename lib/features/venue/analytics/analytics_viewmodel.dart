@@ -6,6 +6,7 @@ import '../../../repositories/mocks/mock_analytics_repository.dart';
 
 class AnalyticsViewModel extends ChangeNotifier {
   final AnalyticsRepository _repo;
+  final String _venueId;
 
   Map<String, dynamic> _data = {};
   bool isLoading = true;
@@ -17,8 +18,9 @@ class AnalyticsViewModel extends ChangeNotifier {
     {'key': 'allTime', 'label': 'All Time'},
   ];
 
-  AnalyticsViewModel({AnalyticsRepository? repo})
-      : _repo = repo ?? MockAnalyticsRepository() {
+  AnalyticsViewModel({AnalyticsRepository? repo, required String venueId})
+      : _repo = repo ?? MockAnalyticsRepository(),
+        _venueId = venueId {
     _init();
   }
 
@@ -36,7 +38,7 @@ class AnalyticsViewModel extends ChangeNotifier {
   List<dynamic> get topOrganizers => _data['topOrganizers'] ?? [];
 
   void _init() {
-    _repo.watchAnalytics('venue_1', selectedPeriod).listen((data) {
+    _repo.watchAnalytics(_venueId, selectedPeriod).listen((data) {
       _data = data;
       isLoading = false;
       notifyListeners();
