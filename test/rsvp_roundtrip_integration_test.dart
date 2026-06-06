@@ -1,7 +1,7 @@
 // rsvp_roundtrip_integration_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:courtcall/models/models.dart';
-import 'package:courtcall/repositories/mock_player_repository.dart';
+import 'package:courtcall/repositories/mocks/mock_player_repository.dart';
 import 'package:courtcall/features/player/session_feed/session_feed_viewmodel.dart';
 import 'package:courtcall/features/player/rsvp_confirmation/rsvp_confirmation_viewmodel.dart';
 import 'package:courtcall/features/player/payment_history/payment_history_viewmodel.dart';

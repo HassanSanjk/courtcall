@@ -1,7 +1,6 @@
 // session_feed_viewmodel_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:courtcall/models/models.dart';
-import 'package:courtcall/repositories/mock_player_repository.dart';
+import 'package:courtcall/repositories/mocks/mock_player_repository.dart';
 import 'package:courtcall/features/player/session_feed/session_feed_viewmodel.dart';
 
 void main() {

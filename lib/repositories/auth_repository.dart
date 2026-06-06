@@ -1,4 +1,4 @@
-import 'models.dart';
+import '../models/models.dart';
 
 /// Exception thrown by [AuthRepository] implementations for known auth errors.
 /// Screens catch this to display user-friendly messages.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../auth/auth_viewmodel.dart';
 
 /// Role selection screen shown after a user enters their email/password.
@@ -9,7 +10,7 @@ import '../../auth/auth_viewmodel.dart';
 /// written to Firestore via [AuthViewModel.register] and they are
 /// navigated to their role's home screen.
 class RoleSelectionScreen extends StatefulWidget {
-  const RoleSelectionScreen({
+  RoleSelectionScreen({
     super.key,
     required this.email,
     required this.password,
@@ -58,53 +59,52 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final vm = context.watch<AuthViewModel>();
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundAsh,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       appBar: AppBar(
-        title: const Text('Choose Your Role'),
-        backgroundColor: AppColors.backgroundAsh,
+        title: Text('Choose Your Role'),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('What brings you to CourtCall?',
-                style: AppTextStyles.headlineMedium),
-            const SizedBox(height: AppSpacing.xs),
+                style: Theme.of(context).textTheme.headlineMedium),
+            SizedBox(height: 4.0),
             Text('You can only have one role per account.',
-                style: AppTextStyles.bodySmall),
-            const SizedBox(height: AppSpacing.lg),
+                style: Theme.of(context).textTheme.bodySmall),
+            SizedBox(height: 24.0),
 
             // ── Name field ──────────────────────────────────────────
             TextField(
               controller: _nameController,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Full Name',
                 hintText: 'e.g. Hussein Ahmad',
                 prefixIcon: Icon(Icons.person_outline),
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            SizedBox(height: 24.0),
 
             // ── Error banner ────────────────────────────────────────
             if (vm.errorMessage != null) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.sm),
+                padding: const EdgeInsets.all(8.0),
                 decoration: BoxDecoration(
-                  color: AppColors.declined.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: AppColors.declined),
+                  color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12.0),
+                  border: Border.all(color: Theme.of(context).colorScheme.error),
                 ),
                 child: Text(
                   vm.errorMessage!,
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.declined),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: 16.0),
             ],
 
             // ── Role cards ──────────────────────────────────────────
@@ -115,9 +115,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 onTap: () =>
                     setState(() => _selectedRole = option.role),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              SizedBox(height: 8.0),
             ],
-            const SizedBox(height: AppSpacing.lg),
+            SizedBox(height: 24.0),
 
             // ── Continue button ─────────────────────────────────────
             ElevatedButton(
@@ -126,15 +126,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       ? null
                       : () => _register(context, vm),
               child: vm.isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: AppColors.surfaceWhite,
+                        color: Theme.of(context).colorScheme.surface,
                       ),
                     )
-                  : const Text('Continue'),
+                  : Text('Continue'),
             ),
           ],
         ),
@@ -146,7 +146,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your name.')),
+        SnackBar(content: Text('Please enter your name.')),
       );
       return;
     }
@@ -160,12 +160,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
     if (success && context.mounted) {
       final route = switch (_selectedRole!) {
-        'organizer'   => '/organizer_home',
-        'venue_owner' => '/venue_owner_home',
-        _             => '/player_home',
+        'organizer'   => '/organizer/dashboard',
+        'venue_owner' => '/venue/setup',
+        _             => '/player/session-feed',
       };
-      Navigator.of(context)
-          .pushNamedAndRemoveUntil(route, (_) => false);
+      context.go(route);
     }
   }
 }
@@ -189,7 +188,7 @@ class _RoleOption {
 // ── Role card widget ──────────────────────────────────────────────────────────
 
 class _RoleCard extends StatelessWidget {
-  const _RoleCard({
+  _RoleCard({
     required this.option,
     required this.isSelected,
     required this.onTap,
@@ -204,17 +203,17 @@ class _RoleCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(AppSpacing.md),
+        duration: Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primaryNavy.withValues(alpha: 0.06)
-              : AppColors.surfaceWhite,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.06)
+              : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16.0),
           border: Border.all(
             color: isSelected
-                ? AppColors.primaryNavy
-                : AppColors.divider,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outlineVariant,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -225,34 +224,34 @@ class _RoleCard extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primaryNavy
-                    : AppColors.backgroundAsh,
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12.0),
               ),
               child: Icon(
                 option.icon,
                 color: isSelected
-                    ? AppColors.surfaceWhite
-                    : AppColors.textSecondary,
+                    ? Theme.of(context).colorScheme.surface
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
                 size: 24,
               ),
             ),
-            const SizedBox(width: AppSpacing.md),
+            SizedBox(width: 16.0),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(option.title,
-                      style: AppTextStyles.titleMedium),
-                  const SizedBox(height: 2),
+                      style: Theme.of(context).textTheme.titleMedium),
+                  SizedBox(height: 2),
                   Text(option.subtitle,
-                      style: AppTextStyles.bodySmall),
+                      style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle,
-                  color: AppColors.primaryNavy, size: 22),
+              Icon(Icons.check_circle,
+                  color: Theme.of(context).colorScheme.primary, size: 22),
           ],
         ),
       ),

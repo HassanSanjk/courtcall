@@ -3,6 +3,15 @@
 // Hassan owns the Firestore schema — these models must stay in sync
 // with the collection/field names defined in schema v4.
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+DateTime _parseTimestamp(dynamic value) {
+  if (value == null) return DateTime.now();
+  if (value is Timestamp) return value.toDate();
+  if (value is String) return DateTime.parse(value);
+  return DateTime.now();
+}
+
 // ── AppUser ───────────────────────────────────────────────────────────────────
 
 /// Represents a signed-in user returned by [AuthRepository].
@@ -142,17 +151,13 @@ class Session {
         venueName: map['venueName'] as String? ?? '',
         court: map['court'] as String? ?? '',
         date: map['date'] as String? ?? '',
-        dateTimestamp: map['dateTimestamp'] != null
-            ? DateTime.parse(map['dateTimestamp'] as String)
-            : DateTime.now(),
+        dateTimestamp: _parseTimestamp(map['dateTimestamp']),
         time: map['time'] as String? ?? '',
         maxPlayers: map['maxPlayers'] as int? ?? 0,
         rsvpCount: map['rsvpCount'] as int? ?? 0,
         costPerPlayer: (map['costPerPlayer'] as num?)?.toDouble() ?? 0.0,
         status: map['status'] as String? ?? 'upcoming',
-        createdAt: map['createdAt'] != null
-            ? DateTime.parse(map['createdAt'] as String)
-            : DateTime.now(),
+        createdAt: _parseTimestamp(map['createdAt']),
         sport: map['sport'] as String? ?? 'futsal',
       );
 
@@ -162,13 +167,12 @@ class Session {
         'venueName': venueName,
         'court': court,
         'date': date,
-        'dateTimestamp': dateTimestamp.toIso8601String(),
+        'dateTimestamp': Timestamp.fromDate(dateTimestamp),
         'time': time,
         'maxPlayers': maxPlayers,
-        'rsvpCount': rsvpCount,
         'costPerPlayer': costPerPlayer,
         'status': status,
-        'createdAt': createdAt.toIso8601String(),
+        'createdAt': Timestamp.fromDate(createdAt),
         'sport': sport,
       };
 }
@@ -234,7 +238,7 @@ class Rsvp {
         status: map['status'] as String? ?? 'pending',
         declineReason: map['declineReason'] as String?,
         respondedAt: map['respondedAt'] != null
-            ? DateTime.parse(map['respondedAt'] as String)
+            ? _parseTimestamp(map['respondedAt'])
             : null,
       );
 
@@ -245,7 +249,7 @@ class Rsvp {
         'status': status,
         if (declineReason != null) 'declineReason': declineReason,
         if (respondedAt != null)
-          'respondedAt': respondedAt!.toIso8601String(),
+          'respondedAt': Timestamp.fromDate(respondedAt!),
       };
 }
 
@@ -319,7 +323,7 @@ class Payment {
         sessionDate: map['sessionDate'] as String?,
         transactionRef: map['transactionRef'] as String?,
         paidAt: map['paidAt'] != null
-            ? DateTime.parse(map['paidAt'] as String)
+            ? _parseTimestamp(map['paidAt'])
             : null,
       );
 
@@ -332,6 +336,6 @@ class Payment {
         if (sessionName != null) 'sessionName': sessionName,
         if (sessionDate != null) 'sessionDate': sessionDate,
         if (transactionRef != null) 'transactionRef': transactionRef,
-        if (paidAt != null) 'paidAt': paidAt!.toIso8601String(),
+        if (paidAt != null) 'paidAt': Timestamp.fromDate(paidAt!),
       };
 }

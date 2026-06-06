@@ -1,10 +1,17 @@
 // features/venue/cancellation_alert/cancellation_alert_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:courtcall/repositories/cancellation_repository.dart';
+import 'package:courtcall/repositories/firebase/firebase_cancellation_repository.dart';
 import 'cancellation_alert_viewmodel.dart';
 
 class CancellationAlertScreen extends StatefulWidget {
-  const CancellationAlertScreen({super.key});
+  final String venueId;
+
+  const CancellationAlertScreen({super.key, required this.venueId, this.repo});
+
+  final CancellationRepository? repo;
 
   @override
   State<CancellationAlertScreen> createState() =>
@@ -17,8 +24,11 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel = CancellationAlertViewModel();
-    _viewModel.addListener(() => setState(() {}));
+    _viewModel = CancellationAlertViewModel(
+      repo: widget.repo ?? FirebaseCancellationRepository(),
+      venueId: widget.venueId,
+    );
+    _viewModel.addListener(() { if (mounted) setState(() {}); });
   }
 
   @override
@@ -35,30 +45,36 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
       backgroundColor: const Color(0xFFF5F6FA),
       body: _viewModel.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildHeroHeader(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildBookingDetailsCard(alert),
-                        const SizedBox(height: 16),
-                        _buildLostRevenueCard(alert),
-                        const SizedBox(height: 16),
-                        _buildOrganizerRow(alert),
-                        const SizedBox(height: 16),
-                        _buildCancellationHistory(),
-                        const SizedBox(height: 24),
-                        _buildActionButtons(alert),
-                        const SizedBox(height: 16),
-                      ],
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 420;
+                final pad = isWide ? 24.0 : 16.0;
+                return Column(
+                  children: [
+                    _buildHeroHeader(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(pad),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildBookingDetailsCard(alert),
+                            const SizedBox(height: 16),
+                            _buildLostRevenueCard(alert),
+                            const SizedBox(height: 16),
+                            _buildOrganizerRow(alert),
+                            const SizedBox(height: 16),
+                            _buildCancellationHistory(),
+                            const SizedBox(height: 24),
+                            _buildActionButtons(alert),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
     );
   }
@@ -77,7 +93,7 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => context.go('/venue/dashboard?venueId=${widget.venueId}'),
                   ),
                   const Expanded(
                     child: Text('Cancellation Alert',
@@ -99,7 +115,7 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.warning_amber_rounded,
@@ -116,7 +132,7 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white.withOpacity(0.75),
+                          color: Colors.white.withValues(alpha: 0.75),
                           letterSpacing: 1.2)),
                 ],
               ),
@@ -162,7 +178,7 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
         color: const Color(0xFFFFF7ED),
         borderRadius: BorderRadius.circular(14),
         border:
-            Border.all(color: const Color(0xFFFBB040).withOpacity(0.4)),
+            Border.all(color: const Color(0xFFFBB040).withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +207,8 @@ class _CancellationAlertScreenState extends State<CancellationAlertScreen> {
   }
 
   Widget _buildOrganizerRow(Map<String, dynamic> alert) {
-    final name = '${alert['organizerName']}';
+    final name = '${alert['organizerName'] ?? ''}';
+    if (name.isEmpty) return const SizedBox.shrink();
     return _Card(
       child: Row(
         children: [
@@ -352,7 +369,7 @@ class _Card extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 1))
         ],

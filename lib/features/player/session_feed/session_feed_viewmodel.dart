@@ -32,6 +32,7 @@ class SessionFeedViewModel extends ChangeNotifier {
   String? _errorMessage;
 
   StreamSubscription<List<Session>>? _sessionsSub;
+  bool _disposed = false;
 
   String get playerId => _playerId;
 
@@ -61,6 +62,7 @@ class SessionFeedViewModel extends ChangeNotifier {
   // and getConfirmedPlayerNames are caught and surfaced instead of silently
   // dropped by the listen callback.
   Future<void> _onSessionsUpdate(List<Session> sessions) async {
+    if (_disposed) return;
     _upcomingSessions =
         sessions.where((s) => s.status == 'upcoming').toList()
           ..sort((a, b) => a.dateTimestamp.compareTo(b.dateTimestamp));
@@ -95,10 +97,12 @@ class SessionFeedViewModel extends ChangeNotifier {
       }),
     ]);
 
+    if (_disposed) return;
     notifyListeners();
   }
 
   void _onError(Object error) {
+    if (_disposed) return;
     _errorMessage = 'Failed to load sessions. Please try again.';
     notifyListeners();
   }
@@ -139,6 +143,7 @@ class SessionFeedViewModel extends ChangeNotifier {
   }
 
   void _setSessionLoading(String sessionId, bool value) {
+    if (_disposed) return;
     if (value) {
       _loadingSessions.add(sessionId);
     } else {
@@ -154,6 +159,7 @@ class SessionFeedViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _sessionsSub?.cancel();
     super.dispose();
   }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
+
 import 'status_pill.dart';
 
 class SessionCard extends StatelessWidget {
@@ -10,6 +10,7 @@ class SessionCard extends StatelessWidget {
   final int playerCount;
   final int maxPlayers;
   final String status;
+  final String? sport;
   final VoidCallback? onTap;
 
   const SessionCard({
@@ -21,8 +22,19 @@ class SessionCard extends StatelessWidget {
     required this.playerCount,
     required this.maxPlayers,
     this.status = 'upcoming',
+    this.sport,
     this.onTap,
   });
+
+  static IconData _sportIcon(String? sport) {
+    switch (sport?.toLowerCase()) {
+      case 'futsal': return Icons.sports_soccer;
+      case 'badminton': return Icons.sports_tennis;
+      case 'basketball': return Icons.sports_basketball;
+      case 'volleyball': return Icons.sports_volleyball;
+      default: return Icons.sports;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +44,7 @@ class SessionCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surfaceWhite,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -44,7 +56,28 @@ class SessionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _DateBadge(date: date, time: time),
+            Container(
+              width: 52,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: Color(0xFF1A1A2E).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Icon(_sportIcon(sport), size: 20, color: const Color(0xFF1A1A2E)),
+                  const SizedBox(height: 4),
+                  Text(
+                    date.split(',').last.trim().split(' ').first,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -55,7 +88,7 @@ class SessionCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primaryNavy,
+                      color: Color(0xFF1A1A2E),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -96,64 +129,5 @@ class SessionCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _DateBadge extends StatelessWidget {
-  final String date;
-  final String time;
-
-  const _DateBadge({required this.date, required this.time});
-
-  @override
-  Widget build(BuildContext context) {
-    final parts = date.split('-');
-    final month = _monthAbbr(int.tryParse(parts.length > 1 ? parts[1] : '1') ?? 1);
-    final day = parts.length > 2 ? parts[2] : '--';
-
-    return Container(
-      width: 52,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.primaryNavy.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(
-            month,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryNavy,
-            ),
-          ),
-          Text(
-            day,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryNavy,
-              height: 1.1,
-            ),
-          ),
-          Text(
-            time,
-            style: const TextStyle(
-              fontSize: 10,
-              color: Colors.black54,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _monthAbbr(int m) {
-    const months = [
-      'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
-    ];
-    return months[(m - 1).clamp(0, 11)];
   }
 }

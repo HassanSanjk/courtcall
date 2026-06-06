@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_theme.dart';
+
 import '../../../core/widgets/widgets.dart';
 import '../../../models/models.dart';
 import '../../../repositories/player_repository.dart';
@@ -21,7 +21,7 @@ import 'rsvp_confirmation_viewmodel.dart';
 ///
 /// If session is full: Going card is replaced by "Join Waitlist".
 class RsvpConfirmationScreen extends StatelessWidget {
-  const RsvpConfirmationScreen({super.key, required this.session});
+  RsvpConfirmationScreen({super.key, required this.session});
 
   final Session session;
 
@@ -41,13 +41,13 @@ class RsvpConfirmationScreen extends StatelessWidget {
         playerId: playerId,
         playerName: playerName,
       ),
-      child: const _RsvpConfirmationView(),
+      child: _RsvpConfirmationView(),
     );
   }
 }
 
 class _RsvpConfirmationView extends StatefulWidget {
-  const _RsvpConfirmationView();
+  _RsvpConfirmationView();
 
   @override
   State<_RsvpConfirmationView> createState() => _RsvpConfirmationViewState();
@@ -68,28 +68,28 @@ class _RsvpConfirmationViewState extends State<_RsvpConfirmationView> {
     final vm = context.watch<RsvpConfirmationViewModel>();
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundAsh,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       appBar: AppBar(
-        title: const Text('RSVP'),
-        backgroundColor: AppColors.backgroundAsh,
+        title: Text('RSVP'),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         elevation: 0,
       ),
       body: vm.isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryNavy))
+          ? Center(
+              child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
           : _buildBody(context, vm),
     );
   }
 
   Widget _buildBody(BuildContext context, RsvpConfirmationViewModel vm) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Session summary card ────────────────────────────────────
           _SessionSummaryCard(session: vm.session),
-          const SizedBox(height: AppSpacing.lg),
+          SizedBox(height: 24.0),
 
           // ── Success / error messages ────────────────────────────────
           if (vm.successMessage != null)
@@ -111,8 +111,8 @@ class _RsvpConfirmationViewState extends State<_RsvpConfirmationView> {
             _ConsequenceBanner(spotsRemaining: vm.spotsRemaining),
 
           // ── "Will you be there?" ────────────────────────────────────
-          Text('Will you be there?', style: AppTextStyles.headlineMedium),
-          const SizedBox(height: AppSpacing.md),
+          Text('Will you be there?', style: Theme.of(context).textTheme.headlineMedium),
+          SizedBox(height: 16.0),
 
           // ── Response cards ──────────────────────────────────────────
           if (vm.isFull && vm.currentStatus != 'confirmed')
@@ -131,7 +131,7 @@ class _RsvpConfirmationViewState extends State<_RsvpConfirmationView> {
                   child: _ResponseCard(
                     label: 'Going',
                     icon: Icons.check_circle_outline,
-                    color: AppColors.accentGreen,
+                    color: Theme.of(context).colorScheme.secondary,
                     isSelected: (_pendingSelection ?? vm.currentStatus) ==
                         'confirmed',
                     isLoading: vm.isSubmitting &&
@@ -140,12 +140,12 @@ class _RsvpConfirmationViewState extends State<_RsvpConfirmationView> {
                         setState(() => _pendingSelection = 'confirmed'),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                SizedBox(width: 8.0),
                 Expanded(
                   child: _ResponseCard(
                     label: 'Maybe',
                     icon: Icons.help_outline,
-                    color: AppColors.alertAmber,
+                    color: Theme.of(context).colorScheme.tertiary,
                     isSelected:
                         (_pendingSelection ?? vm.currentStatus) == 'pending',
                     isLoading:
@@ -154,12 +154,12 @@ class _RsvpConfirmationViewState extends State<_RsvpConfirmationView> {
                         setState(() => _pendingSelection = 'pending'),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                SizedBox(width: 8.0),
                 Expanded(
                   child: _ResponseCard(
                     label: "Can't\nMake It",
                     icon: Icons.cancel_outlined,
-                    color: AppColors.declined,
+                    color: Theme.of(context).colorScheme.error,
                     isSelected:
                         (_pendingSelection ?? vm.currentStatus) == 'declined',
                     isLoading:
@@ -170,29 +170,29 @@ class _RsvpConfirmationViewState extends State<_RsvpConfirmationView> {
                 ),
               ],
             ),
-          const SizedBox(height: AppSpacing.md),
+          SizedBox(height: 16.0),
 
           // ── Live tally ──────────────────────────────────────────────
           Center(
             child: Text(
               '${vm.goingCount} GOING · ${vm.maybeCount} MAYBE · ${vm.outCount} OUT',
-              style: AppTextStyles.bodySmall.copyWith(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 letterSpacing: 0.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
+          SizedBox(height: 16.0),
 
           // ── Optional note ───────────────────────────────────────────
           TextField(
             controller: _noteController,
             maxLines: 2,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Add a note (Optional) — e.g. I might be 10 mins late...',
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          SizedBox(height: 24.0),
 
           // ── Confirm RSVP button ─────────────────────────────────────
           ElevatedButton(
@@ -200,47 +200,47 @@ class _RsvpConfirmationViewState extends State<_RsvpConfirmationView> {
                 ? null
                 : () => _submitRsvp(context, vm),
             child: vm.isSubmitting
-                ? const SizedBox(
+                ? SizedBox(
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: AppColors.surfaceWhite,
+                      color: Theme.of(context).colorScheme.surface,
                     ),
                   )
-                : const Text('Confirm RSVP'),
+                : Text('Confirm RSVP'),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          SizedBox(height: 24.0),
 
           // ── Confirmed participants ──────────────────────────────────
           if (vm.confirmedRsvps.isNotEmpty) ...[
             Text(
               "Who's going (${vm.confirmedRsvps.length})",
-              style: AppTextStyles.titleMedium,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: AppSpacing.sm),
+            SizedBox(height: 8.0),
             ...vm.confirmedRsvps.map(
               (rsvp) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                padding: const EdgeInsets.only(bottom: 8.0),
                 child: Row(
                   children: [
-                    PlayerAvatar(
-                      name: rsvp.playerName,
-                      size: AvatarSize.md,
+                    CircleAvatar(
+                      radius: 12,
+                      child: Text(rsvp.playerName.isNotEmpty ? rsvp.playerName[0] : '?'),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(rsvp.playerName, style: AppTextStyles.bodyMedium),
-                    const Spacer(),
-                    const StatusPill(
+                    SizedBox(width: 8.0),
+                    Text(rsvp.playerName, style: Theme.of(context).textTheme.bodyMedium),
+                    Spacer(),
+                    StatusPill(
                       label: 'Going',
-                      type: StatusPillType.confirmed,
+                      status: PillStatus.going,
                     ),
                   ],
                 ),
               ),
             ),
           ],
-          const SizedBox(height: AppSpacing.xl),
+          SizedBox(height: 32.0),
         ],
       ),
     );
@@ -269,54 +269,54 @@ class _RsvpConfirmationViewState extends State<_RsvpConfirmationView> {
 // ── Sub-widgets ─────────────────────────────────────────────────────────────
 
 class _SessionSummaryCard extends StatelessWidget {
-  const _SessionSummaryCard({required this.session});
+  _SessionSummaryCard({required this.session});
   final Session session;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: AppColors.primaryNavy,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        color: Theme.of(context).colorScheme.primary,
+        borderRadius: BorderRadius.circular(16.0),
       ),
       child: Column(
         children: [
           Text(
             '${session.venueName} · ${session.court}',
-            style: AppTextStyles.headlineMedium.copyWith(
-              color: AppColors.surfaceWhite,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: Theme.of(context).colorScheme.surface,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.xs),
+          SizedBox(height: 4.0),
           Text(
             session.date,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.surfaceWhite.withValues(alpha: 0.8),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
             ),
           ),
           Text(
             session.time,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.surfaceWhite.withValues(alpha: 0.8),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          SizedBox(height: 8.0),
           Container(
             padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.xs,
+              horizontal: 16.0,
+              vertical: 4.0,
             ),
             decoration: BoxDecoration(
-              color: AppColors.surfaceWhite.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(100.0),
             ),
             child: Text(
               'RM ${session.costPerPlayer.toStringAsFixed(2)}',
-              style: AppTextStyles.titleMedium.copyWith(
-                color: AppColors.surfaceWhite,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.surface,
               ),
             ),
           ),
@@ -327,7 +327,7 @@ class _SessionSummaryCard extends StatelessWidget {
 }
 
 class _ResponseCard extends StatelessWidget {
-  const _ResponseCard({
+  _ResponseCard({
     required this.label,
     required this.icon,
     required this.color,
@@ -348,27 +348,27 @@ class _ResponseCard extends StatelessWidget {
     return GestureDetector(
       onTap: isLoading ? null : onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.md,
-          horizontal: AppSpacing.sm,
+          vertical: 16.0,
+          horizontal: 8.0,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.12) : AppColors.surfaceWhite,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          color: isSelected ? color.withValues(alpha: 0.12) : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12.0),
           border: Border.all(
-            color: isSelected ? color : const Color(0xFFE5E7EB),
+            color: isSelected ? color : Color(0xFFE5E7EB),
             width: isSelected ? 2 : 1,
           ),
         ),
         child: Column(
           children: [
             Icon(icon, color: color, size: 28),
-            const SizedBox(height: AppSpacing.xs),
+            SizedBox(height: 4.0),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: AppTextStyles.labelMedium.copyWith(color: color),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color),
             ),
           ],
         ),
@@ -378,7 +378,7 @@ class _ResponseCard extends StatelessWidget {
 }
 
 class _WaitlistCard extends StatelessWidget {
-  const _WaitlistCard({
+  _WaitlistCard({
     required this.isSelected,
     required this.isLoading,
     required this.onTap,
@@ -394,16 +394,16 @@ class _WaitlistCard extends StatelessWidget {
       onTap: isLoading ? null : onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.alertAmber.withValues(alpha: 0.1)
-              : AppColors.surfaceWhite,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+              ? Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1)
+              : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(12.0),
           border: Border.all(
             color: isSelected
-                ? AppColors.alertAmber
-                : const Color(0xFFE5E7EB),
+                ? Theme.of(context).colorScheme.tertiary
+                : Color(0xFFE5E7EB),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -411,12 +411,12 @@ class _WaitlistCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.queue_outlined,
-                color: AppColors.alertAmber, size: 20),
-            const SizedBox(width: AppSpacing.sm),
+                color: Theme.of(context).colorScheme.tertiary, size: 20),
+            SizedBox(width: 8.0),
             Text(
               'Session Full — Join Waitlist',
-              style: AppTextStyles.titleMedium.copyWith(
-                color: AppColors.alertAmber,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.tertiary,
               ),
             ),
           ],
@@ -427,31 +427,31 @@ class _WaitlistCard extends StatelessWidget {
 }
 
 class _ConsequenceBanner extends StatelessWidget {
-  const _ConsequenceBanner({required this.spotsRemaining});
+  _ConsequenceBanner({required this.spotsRemaining});
   final int spotsRemaining;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      margin: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: AppColors.alertAmber.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.alertAmber),
+        color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(color: Theme.of(context).colorScheme.tertiary),
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded,
-              color: AppColors.alertAmber, size: 18),
-          const SizedBox(width: AppSpacing.sm),
+          Icon(Icons.warning_amber_rounded,
+              color: Theme.of(context).colorScheme.tertiary, size: 18),
+          SizedBox(width: 8.0),
           Expanded(
             child: Text(
               'Heads up — if you leave, the session may be underpaid. '
               'Only $spotsRemaining spot${spotsRemaining == 1 ? '' : 's'} remaining.',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.alertAmber,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.tertiary,
               ),
             ),
           ),
@@ -462,7 +462,7 @@ class _ConsequenceBanner extends StatelessWidget {
 }
 
 class _MessageBanner extends StatelessWidget {
-  const _MessageBanner({
+  _MessageBanner({
     required this.message,
     required this.isError,
     this.onDismiss,
@@ -474,14 +474,14 @@ class _MessageBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isError ? AppColors.declined : AppColors.accentGreen;
+    final color = isError ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.secondary;
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      margin: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(12.0),
         border: Border.all(color: color),
       ),
       child: Row(
@@ -491,12 +491,12 @@ class _MessageBanner extends StatelessWidget {
             color: color,
             size: 18,
           ),
-          const SizedBox(width: AppSpacing.sm),
+          SizedBox(width: 8.0),
           Expanded(
             child: Text(
               message,
               style:
-                  AppTextStyles.bodySmall.copyWith(color: color),
+                  Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
             ),
           ),
           if (onDismiss != null)

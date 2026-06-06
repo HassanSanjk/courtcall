@@ -1,10 +1,17 @@
 // features/venue/analytics/analytics_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:courtcall/repositories/analytics_repository.dart';
+import 'package:courtcall/repositories/firebase/firebase_analytics_repository.dart';
 import 'analytics_viewmodel.dart';
 
 class AnalyticsScreen extends StatefulWidget {
-  const AnalyticsScreen({super.key});
+  final String venueId;
+
+  const AnalyticsScreen({super.key, required this.venueId, this.repo});
+
+  final AnalyticsRepository? repo;
 
   @override
   State<AnalyticsScreen> createState() => _AnalyticsScreenState();
@@ -16,8 +23,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel = AnalyticsViewModel();
-    _viewModel.addListener(() => setState(() {}));
+    _viewModel = AnalyticsViewModel(
+      repo: widget.repo ?? FirebaseAnalyticsRepository(),
+      venueId: widget.venueId,
+    );
+    _viewModel.addListener(() { if (mounted) setState(() {}); });
   }
 
   @override
@@ -33,58 +43,66 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       body: _viewModel.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeroChart(),
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildStatStrip(),
-                                const SizedBox(height: 24),
-                                _buildTopOrganizers(),
-                                const SizedBox(height: 16),
-                              ],
-                            ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth > 420;
+                  final pad = isWide ? 24.0 : 16.0;
+                  return Column(
+                    children: [
+                      _buildHeader(pad),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeroChart(pad),
+                              Padding(
+                                padding: EdgeInsets.all(pad),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildStatStrip(),
+                                    const SizedBox(height: 24),
+                                    _buildTopOrganizers(),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(double pad) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: EdgeInsets.fromLTRB(pad, 12, pad, 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('Revenue Analytics',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E))),
           IconButton(
-            icon: const Icon(Icons.bar_chart, color: Color(0xFF1A1A2E)),
-            onPressed: () {},
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A2E)),
+            onPressed: () => context.go('/venue/dashboard?venueId=${widget.venueId}'),
           ),
+          const Expanded(
+            child: Text('Revenue Analytics',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A2E))),
+          ),
+          const SizedBox(width: 48),
         ],
       ),
     );
   }
 
-  Widget _buildHeroChart() {
+  Widget _buildHeroChart(double pad) {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -94,7 +112,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           bottomRight: Radius.circular(28),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      padding: EdgeInsets.fromLTRB(pad + 4, 8, pad + 4, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -117,7 +135,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           Text(_viewModel.periodLabel,
               style: TextStyle(
                   fontSize: 12,
-                  color: Colors.white.withOpacity(0.55),
+                  color: Colors.white.withValues(alpha: 0.55),
                   letterSpacing: 0.5)),
           const SizedBox(height: 24),
           _BarChart(
@@ -132,7 +150,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget _buildPeriodTabs() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
       ),
       padding: const EdgeInsets.all(3),
@@ -156,7 +174,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       fontWeight: FontWeight.w600,
                       color: isSelected
                           ? const Color(0xFF1A1A2E)
-                          : Colors.white.withOpacity(0.7))),
+                          : Colors.white.withValues(alpha: 0.7))),
             ),
           );
         }).toList(),
@@ -171,7 +189,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 2))
         ],
@@ -255,7 +273,7 @@ class _BarChart extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: isHighlighted
                                 ? const Color(0xFF00E676)
-                                : const Color(0xFF00E676).withOpacity(0.45),
+                                : const Color(0xFF00E676).withValues(alpha: 0.45),
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
@@ -275,7 +293,7 @@ class _BarChart extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                               fontSize: 11,
-                              color: Colors.white.withOpacity(0.55))),
+                              color: Colors.white.withValues(alpha: 0.55))),
                     ))
                 .toList(),
           ),
@@ -298,9 +316,9 @@ class _TrendBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -386,7 +404,7 @@ class _OrganizerTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 1))
         ],
@@ -397,7 +415,7 @@ class _OrganizerTile extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: _rankColor.withOpacity(0.15),
+              color: _rankColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Center(

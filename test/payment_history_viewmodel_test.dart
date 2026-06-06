@@ -1,6 +1,6 @@
 // payment_history_viewmodel_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:courtcall/repositories/mock_player_repository.dart';
+import 'package:courtcall/repositories/mocks/mock_player_repository.dart';
 import 'package:courtcall/features/player/payment_history/payment_history_viewmodel.dart';
 
 void main() {

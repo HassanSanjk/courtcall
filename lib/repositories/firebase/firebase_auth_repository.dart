@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'auth_repository.dart';
-import 'models.dart';
+import '../auth_repository.dart';
+import '../../models/models.dart';
 
 /// Firebase implementation of [AuthRepository].
 ///

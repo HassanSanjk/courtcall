@@ -6,19 +6,28 @@ import '../../../repositories/mocks/mock_availability_repository.dart';
 
 class AvailabilityViewModel extends ChangeNotifier {
   final AvailabilityRepository _repo;
+  final String _venueId;
 
   List<Map<String, dynamic>> _slots = [];
   bool isLoading = true;
   bool isSaving = false;
   bool hasChanges = false;
   int selectedCourtIndex = 0;
-  String _weekStart = '2026-05-09';
+  String _weekStart = _todayWeekStart();
 
   final List<String> courts = ['Court 1', 'Court 2', 'Court 3', 'VIP Court'];
 
-  AvailabilityViewModel({AvailabilityRepository? repo})
-      : _repo = repo ?? MockAvailabilityRepository() {
+  AvailabilityViewModel({AvailabilityRepository? repo, required String venueId})
+      : _repo = repo ?? MockAvailabilityRepository(),
+        _venueId = venueId {
     _init();
+  }
+
+  static String _todayWeekStart() {
+    final now = DateTime.now();
+    final daysFromMonday = now.weekday - DateTime.monday;
+    final monday = now.subtract(Duration(days: daysFromMonday));
+    return monday.toIso8601String().substring(0, 10);
   }
 
   List<Map<String, dynamic>> get slots => _slots;
@@ -43,7 +52,7 @@ class AvailabilityViewModel extends ChangeNotifier {
   String get weekRangeLabel => _weekStart; // formatted by UI if needed
 
   void _init() {
-    _repo.watchSlots('venue_1', _weekStart).listen((list) {
+    _repo.watchSlots(_venueId, _weekStart).listen((list) {
       _slots = list.cast<Map<String, dynamic>>();
       isLoading = false;
       notifyListeners();
@@ -88,7 +97,7 @@ class AvailabilityViewModel extends ChangeNotifier {
     isSaving = true;
     notifyListeners();
 
-    await _repo.saveSlots('venue_1', _slots);
+    await _repo.saveSlots(_venueId, _slots);
 
     isSaving = false;
     hasChanges = false;

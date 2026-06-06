@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_theme.dart';
+
+import 'package:go_router/go_router.dart';
 import '../../auth/auth_viewmodel.dart';
-import 'role_selection_screen.dart';
+import '../role_selection/role_selection_screen.dart';
 
 /// Login screen — entry point for all roles.
 ///
 /// Handles sign-in and navigates to [RoleSelectionScreen] for new users,
 /// or directly to the role home screen for returning users.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -36,60 +37,52 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: AppSpacing.xxl),
+                SizedBox(height: 48.0),
 
                 // ── Logo / branding ───────────────────────────────────
                 Center(
-                  child: Container(
+                  child: Image.asset(
+                    'assets/images/logo.png',
                     width: 72,
                     height: 72,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryNavy,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                    child: const Icon(
-                      Icons.sports_soccer,
-                      color: AppColors.surfaceWhite,
-                      size: 36,
-                    ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
+                SizedBox(height: 16.0),
                 Center(
                   child: Text(
                     'CourtCall',
-                    style: AppTextStyles.headlineLarge.copyWith(
-                      color: AppColors.primaryNavy,
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
                 Center(
                   child: Text(
                     'Book. Play. Connect.',
-                    style: AppTextStyles.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xxl),
+                SizedBox(height: 48.0),
 
                 // ── Heading ───────────────────────────────────────────
                 Text(
                   _isRegisterMode ? 'Create Account' : 'Welcome Back',
-                  style: AppTextStyles.headlineMedium,
+                  style: Theme.of(context).textTheme.headlineMedium,
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                SizedBox(height: 4.0),
                 Text(
                   _isRegisterMode
                       ? 'Sign up to start booking sessions'
                       : 'Sign in to continue',
-                  style: AppTextStyles.bodySmall,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                SizedBox(height: 24.0),
 
                 // ── Error banner ──────────────────────────────────────
                 if (vm.errorMessage != null) ...[
@@ -97,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     message: vm.errorMessage!,
                     onDismiss: vm.clearError,
                   ),
-                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(height: 16.0),
                 ],
 
                 // ── Email field ───────────────────────────────────────
@@ -111,13 +104,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (!v.contains('@')) return 'Enter a valid email address';
                     return null;
                   },
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Email',
                     hintText: 'you@example.com',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
+                SizedBox(height: 16.0),
 
                 // ── Password field ────────────────────────────────────
                 TextFormField(
@@ -133,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Password',
                     hintText: '••••••••',
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    prefixIcon: Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(_obscurePassword
                           ? Icons.visibility_outlined
@@ -143,30 +136,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                SizedBox(height: 24.0),
 
                 // ── Primary action button ─────────────────────────────
                 ElevatedButton(
                   onPressed: vm.isLoading ? null : () => _submit(context, vm),
                   child: vm.isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 22,
                           width: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: AppColors.surfaceWhite,
+                            color: Theme.of(context).colorScheme.surface,
                           ),
                         )
                       : Text(_isRegisterMode ? 'Create Account' : 'Sign In'),
                 ),
-                const SizedBox(height: AppSpacing.md),
+                SizedBox(height: 16.0),
 
                 // ── Forgot password ───────────────────────────────────
                 if (!_isRegisterMode)
                   Center(
                     child: TextButton(
                       onPressed: () => _forgotPassword(context, vm),
-                      child: const Text('Forgot password?'),
+                      child: Text('Forgot password?'),
                     ),
                   ),
 
@@ -181,8 +174,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       _isRegisterMode
                           ? 'Already have an account? Sign In'
                           : "Don't have an account? Sign Up",
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.primaryNavy,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -222,11 +215,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _navigateByRole(BuildContext context, String role) {
     final route = switch (role) {
-      'organizer'   => '/organizer_home',
-      'venue_owner' => '/venue_owner_home',
-      _             => '/player_home',
+      'organizer'   => '/organizer/dashboard',
+      'venue_owner' => '/venue/setup',
+      _             => '/player/session-feed',
     };
-    Navigator.of(context).pushNamedAndRemoveUntil(route, (_) => false);
+    context.go(route);
   }
 
   Future<void> _forgotPassword(
@@ -234,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
             content:
                 Text('Enter your email first, then tap Forgot password.')),
       );
@@ -252,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
 // ── Error banner ──────────────────────────────────────────────────────────────
 
 class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message, required this.onDismiss});
+  _ErrorBanner({required this.message, required this.onDismiss});
 
   final String message;
   final VoidCallback onDismiss;
@@ -261,25 +254,25 @@ class _ErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: AppColors.declined.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.declined),
+        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(color: Theme.of(context).colorScheme.error),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: AppColors.declined, size: 18),
-          const SizedBox(width: AppSpacing.sm),
+          Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 18),
+          SizedBox(width: 8.0),
           Expanded(
             child: Text(
               message,
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.declined),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
             ),
           ),
           GestureDetector(
             onTap: onDismiss,
-            child: const Icon(Icons.close, color: AppColors.declined, size: 16),
+            child: Icon(Icons.close, color: Theme.of(context).colorScheme.error, size: 16),
           ),
         ],
       ),

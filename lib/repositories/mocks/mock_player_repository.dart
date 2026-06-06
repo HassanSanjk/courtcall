@@ -1,6 +1,6 @@
 import 'dart:async';
-import '../models/models.dart';
-import 'player_repository.dart';
+import '../../models/models.dart';
+import '../player_repository.dart';
 
 /// Mock implementation of [PlayerRepository].
 ///

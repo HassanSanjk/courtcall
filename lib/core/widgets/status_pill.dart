@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
+
 
 enum PillStatus { paid, unpaid, pending, going, maybe, out }
 
@@ -33,11 +33,11 @@ class StatusPill extends StatelessWidget {
     switch (s) {
       case PillStatus.paid:
       case PillStatus.going:
-        return (AppColors.accentGreen.withValues(alpha:0.2), AppColors.accentGreen);
+        return (Color(0xFF0D7A3E).withValues(alpha:0.2), Color(0xFF0D7A3E));
       case PillStatus.unpaid:
       case PillStatus.pending:
       case PillStatus.maybe:
-        return (AppColors.alertAmber.withValues(alpha:0.2), AppColors.alertAmber);
+        return (Color(0xFFFBB040).withValues(alpha:0.2), Color(0xFFFBB040));
       case PillStatus.out:
         return (Colors.red.withValues(alpha:0.2), Colors.red);
     }

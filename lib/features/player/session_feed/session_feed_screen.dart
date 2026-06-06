@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_theme.dart';
+
 import '../../../core/widgets/widgets.dart';
 import '../../../models/models.dart';
+import '../../../repositories/player_repository.dart';
 import '../../auth/auth_viewmodel.dart';
 import 'session_feed_viewmodel.dart';
 import '../rsvp_confirmation/rsvp_confirmation_screen.dart';
@@ -16,42 +17,52 @@ import '../rsvp_confirmation/rsvp_confirmation_screen.dart';
 /// TODO(integration): replace Navigator.push with go_router when Mohammed
 /// wires the navigation router in week 6.
 class SessionFeedScreen extends StatelessWidget {
-  const SessionFeedScreen({super.key});
+  SessionFeedScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final authVm = context.read<AuthViewModel>();
+    final playerId = authVm.currentUser?.uid ?? 'player_001';
+    final playerName = authVm.currentUser?.name ?? 'Player';
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Sessions'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              tooltip: 'Notifications',
-              onPressed: () {
-                // Notification centre — future enhancement.
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout_outlined),
-              tooltip: 'Sign out',
-              onPressed: () => _confirmSignOut(context),
-            ),
-          ],
-          bottom: TabBar(
-            labelColor: colorScheme.primary,
-            unselectedLabelColor: AppColors.textSecondary,
-            indicatorColor: colorScheme.primary,
-            tabs: const [
-              Tab(text: 'Upcoming'),
-              Tab(text: 'Past'),
-            ],
-          ),
+      child: ChangeNotifierProvider(
+        create: (_) => SessionFeedViewModel(
+          repository: context.read<PlayerRepository>(),
+          playerId: playerId,
+          playerName: playerName,
         ),
-        body: const _SessionFeedBody(),
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text('Sessions'),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.notifications_outlined),
+                tooltip: 'Notifications',
+                onPressed: () {
+                  // Notification centre — future enhancement.
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.logout_outlined),
+                tooltip: 'Sign out',
+                onPressed: () => _confirmSignOut(context),
+              ),
+            ],
+            bottom: TabBar(
+              labelColor: colorScheme.primary,
+              unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+              indicatorColor: colorScheme.primary,
+              tabs: const [
+                Tab(text: 'Upcoming'),
+                Tab(text: 'Past'),
+              ],
+            ),
+          ),
+          body: _SessionFeedBody(),
+        ),
       ),
     );
   }
@@ -61,16 +72,16 @@ class SessionFeedScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text('You will be returned to the login screen.'),
+        title: Text('Sign out?'),
+        content: Text('You will be returned to the login screen.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign out'),
+            child: Text('Sign out'),
           ),
         ],
       ),
@@ -82,33 +93,33 @@ class SessionFeedScreen extends StatelessWidget {
 }
 
 class _SessionFeedBody extends StatelessWidget {
-  const _SessionFeedBody();
+  _SessionFeedBody();
 
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<SessionFeedViewModel>();
 
     if (vm.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
     }
 
     if (vm.errorMessage != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off_outlined,
-                  size: 48, color: AppColors.textSecondary),
-              const SizedBox(height: AppSpacing.md),
+              Icon(Icons.wifi_off_outlined,
+                  size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              SizedBox(height: 16.0),
               Text(vm.errorMessage!,
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.bodyMedium),
-              const SizedBox(height: AppSpacing.md),
+                  style: Theme.of(context).textTheme.bodyMedium),
+              SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: vm.clearError,
-                child: const Text('Retry'),
+                child: Text('Retry'),
               ),
             ],
           ),
@@ -135,7 +146,7 @@ class _SessionFeedBody extends StatelessWidget {
 }
 
 class _SessionList extends StatelessWidget {
-  const _SessionList({
+  _SessionList({
     required this.sessions,
     required this.vm,
     required this.emptyMessage,
@@ -154,37 +165,68 @@ class _SessionList extends StatelessWidget {
         child: Text(
           emptyMessage,
           textAlign: TextAlign.center,
-          style: AppTextStyles.bodyMedium
-              .copyWith(color: AppColors.textSecondary),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: sessions.length,
-      itemBuilder: (context, index) {
-        final session = sessions[index];
-        return SessionCard(
-          venueName: session.venueName,
-          court: session.court,
-          date: session.date,
-          time: session.time,
-          sport: session.sport,
-          costPerPlayer: session.costPerPlayer,
-          rsvpCount: session.rsvpCount,
-          maxPlayers: session.maxPlayers,
-          status: session.status,
-          rsvpStatus: vm.rsvpStatusFor(session.sessionId),
-          confirmedPlayerNames: vm.confirmedPlayerNamesFor(session.sessionId),
-          isLoading: vm.isSessionLoading(session.sessionId),
-          onConfirm: () => vm.confirmAttendance(session.sessionId),
-          onDecline: () => vm.declineAttendance(session.sessionId),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => RsvpConfirmationScreen(session: session),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 600;
+        final pad = isWide ? 24.0 : 16.0;
+
+        if (isWide) {
+          return GridView.builder(
+            padding: EdgeInsets.all(pad),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.6,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
-          ),
+            itemCount: sessions.length,
+            itemBuilder: (context, index) {
+              final session = sessions[index];
+              return SessionCard(
+                title: session.sport,
+                date: session.date,
+                time: session.time,
+                venue: session.venueName,
+                playerCount: session.rsvpCount,
+                maxPlayers: session.maxPlayers,
+                status: session.status,
+                sport: session.sport,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => RsvpConfirmationScreen(session: session),
+                  ),
+                ),
+              );
+            },
+          );
+        }
+
+        return ListView.builder(
+          padding: EdgeInsets.all(pad),
+          itemCount: sessions.length,
+          itemBuilder: (context, index) {
+            final session = sessions[index];
+            return SessionCard(
+              title: session.sport,
+              date: session.date,
+              time: session.time,
+              venue: session.venueName,
+              playerCount: session.rsvpCount,
+              maxPlayers: session.maxPlayers,
+              status: session.status,
+              sport: session.sport,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => RsvpConfirmationScreen(session: session),
+                ),
+              ),
+            );
+          },
         );
       },
     );
