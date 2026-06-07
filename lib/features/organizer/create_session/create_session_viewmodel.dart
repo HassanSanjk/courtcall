@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/models.dart';
@@ -105,7 +106,14 @@ class CreateSessionViewModel extends ChangeNotifier {
       });
       return true;
     } catch (e) {
-      errorMessage = 'Failed to create session. Please try again.';
+      if (e is TimeoutException) {
+        errorMessage = 'Request timed out. Check Firestore security rules.';
+      } else if (e.toString().contains('permission-denied') ||
+          e.toString().contains('PERMISSION_DENIED')) {
+        errorMessage = 'Permission denied. Update Firestore security rules.';
+      } else {
+        errorMessage = 'Failed to create session: $e';
+      }
       return false;
     } finally {
       isSaving = false;

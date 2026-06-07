@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../session_repository.dart';
 import '../../models/models.dart';
@@ -50,7 +51,12 @@ class FirebaseSessionRepository implements SessionRepository {
       'costPerPlayer': (data['costPerPlayer'] as num?)?.toDouble() ?? 0.0,
       'status': 'upcoming',
       'createdAt': FieldValue.serverTimestamp(),
-    });
+    }).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw TimeoutException(
+        'Session creation timed out — check Firestore security rules.',
+      ),
+    );
     return id;
   }
 
