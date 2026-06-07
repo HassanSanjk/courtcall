@@ -247,7 +247,26 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                     onTap: () => _pickVenue(context, vm),
                   ),
 
-            // 3. Date
+            // 3. Court (shown only once a venue is selected)
+            if (vm.selectedVenue != null &&
+                vm.availableCourts.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _label('Court'),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                initialValue: vm.selectedCourt,
+                decoration: _fieldDecoration('Select court'),
+                isExpanded: true,
+                items: vm.availableCourts
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) vm.setCourt(v);
+                },
+              ),
+            ],
+
+            // 4. Date
             const SizedBox(height: 16),
             _label('Date'),
             const SizedBox(height: 6),

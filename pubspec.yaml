@@ -23,6 +23,7 @@ dependencies:
   flutter_local_notifications:
   cloud_firestore: ^6.4.1
   google_maps_flutter: ^2.17.0
+  geolocator: ^13.0.2
   google_fonts: ^6.3.3
   url_launcher: ^6.2.6
   cloudinary_public: ^0.23.1

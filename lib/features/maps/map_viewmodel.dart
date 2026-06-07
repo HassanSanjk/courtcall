@@ -1,6 +1,5 @@
-// features/maps/map_viewmodel.dart
-
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../repositories/map_repository.dart';
 
 class MapViewModel extends ChangeNotifier {
@@ -11,9 +10,10 @@ class MapViewModel extends ChangeNotifier {
   String? _selectedSport;
   double _maxPrice = 0;
   bool isLoading = true;
+  bool isLocating = false;
+  String? locationError;
 
-  MapViewModel({required MapRepository repo})
-      : _repo = repo {
+  MapViewModel({required MapRepository repo}) : _repo = repo {
     _init();
   }
 
@@ -35,15 +35,17 @@ class MapViewModel extends ChangeNotifier {
     var result = _allSessions;
 
     if (_selectedSport != null) {
-      result = result.where((s) =>
-        (s['sport'] as String?)?.toLowerCase() == _selectedSport!.toLowerCase()
-      ).toList();
+      result = result
+          .where((s) =>
+              (s['sport'] as String?)?.toLowerCase() ==
+              _selectedSport!.toLowerCase())
+          .toList();
     }
 
     if (_maxPrice > 0) {
-      result = result.where((s) =>
-        ((s['price'] as num?)?.toDouble() ?? 0) <= _maxPrice
-      ).toList();
+      result = result
+          .where((s) => ((s['price'] as num?)?.toDouble() ?? 0) <= _maxPrice)
+          .toList();
     }
 
     return result;
@@ -75,6 +77,62 @@ class MapViewModel extends ChangeNotifier {
     _allSessions = result.cast<Map<String, dynamic>>();
 
     isLoading = false;
+    notifyListeners();
+  }
+
+  /// Requests location permission, gets the device position, reloads sessions
+  /// around that position, and returns the [Position] so the screen can move
+  /// the camera. Returns null if permission is denied or location is off.
+  Future<Position?> goToMyLocation() async {
+    locationError = null;
+    isLocating = true;
+    notifyListeners();
+
+    try {
+      // Check if location services are enabled at OS level.
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        locationError = 'Location services are turned off on your device.';
+        return null;
+      }
+
+      // Check / request permission.
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          locationError = 'Location permission was denied.';
+          return null;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        locationError =
+            'Location permission is permanently denied. Enable it in Settings.';
+        return null;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      // Reload map pins centred on the real location.
+      await loadSessions(lat: position.latitude, lng: position.longitude);
+      return position;
+    } catch (_) {
+      locationError = 'Could not determine your location. Try again.';
+      return null;
+    } finally {
+      isLocating = false;
+      notifyListeners();
+    }
+  }
+
+  void clearLocationError() {
+    locationError = null;
     notifyListeners();
   }
 

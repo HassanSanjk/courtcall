@@ -49,6 +49,10 @@
 	</dict>
 	<key>GMSApiKey</key>
 	<string>AIzaSyC-Jdsz9n4QoO8BsUOwTLKGVPdsF7RnwAw</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>CourtCall uses your location to show nearby sessions on the map.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>CourtCall uses your location to show nearby sessions on the map.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>CourtCall needs access to upload venue photos.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

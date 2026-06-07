@@ -35,6 +35,7 @@ class SessionFeedViewModel extends ChangeNotifier {
   bool _disposed = false;
 
   String get playerId => _playerId;
+  String get playerName => _playerName;
 
   List<Session> get upcomingSessions => _upcomingSessions;
   List<Session> get pastSessions => _pastSessions;
@@ -110,11 +111,15 @@ class SessionFeedViewModel extends ChangeNotifier {
   Future<void> confirmAttendance(String sessionId) async {
     _setSessionLoading(sessionId, true);
     try {
+      final session = _upcomingSessions
+          .where((s) => s.sessionId == sessionId)
+          .firstOrNull;
       await _repo.upsertRsvp(
         sessionId: sessionId,
         playerId: _playerId,
         playerName: _playerName,
         status: 'confirmed',
+        amount: session?.costPerPlayer ?? 0.0,
       );
       _playerRsvpStatuses[sessionId] = 'confirmed';
     } catch (_) {

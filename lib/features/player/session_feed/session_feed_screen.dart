@@ -45,7 +45,7 @@ class _FeedBody extends StatelessWidget {
 
     return Column(
       children: [
-        _FeedHeader(name: vm.playerId == 'player_001' ? 'Player' : vm.playerId),
+        _FeedHeader(name: vm.playerName),
         Expanded(
           child: vm.isLoading
               ? const Center(child: CircularProgressIndicator())

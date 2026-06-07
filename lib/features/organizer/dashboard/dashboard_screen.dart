@@ -87,25 +87,33 @@ class _DashboardView extends StatelessWidget {
 class _Header extends StatelessWidget {
   const _Header();
 
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    return 'Good evening,';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final name = context.read<AuthViewModel>().playerName;
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
         child: Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good morning,',
-                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                    _greeting(),
+                    style: const TextStyle(fontSize: 14, color: Colors.black54),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    'Organizer',
-                    style: TextStyle(
+                    name,
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primaryNavy,
@@ -119,12 +127,14 @@ class _Header extends StatelessWidget {
               tooltip: 'Sign out',
               onPressed: () => _confirmSignOut(context),
             ),
-            const CircleAvatar(
+            CircleAvatar(
               radius: 22,
               backgroundColor: AppColors.primaryNavy,
               child: Text(
-                'OR',
-                style: TextStyle(
+                name.length >= 2
+                    ? name.substring(0, 2).toUpperCase()
+                    : name.toUpperCase(),
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,

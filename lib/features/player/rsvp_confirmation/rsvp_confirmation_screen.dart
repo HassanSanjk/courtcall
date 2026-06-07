@@ -5,7 +5,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/widgets.dart';
-import '../../../core/widgets/player_shell_screen.dart';
 import '../../../models/models.dart';
 import '../../../repositories/player_repository.dart';
 import '../../../repositories/venue_repository.dart';
@@ -290,10 +289,7 @@ class _RsvpConfirmationViewState extends State<_RsvpConfirmationView> {
     return AppBar(
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const PlayerShellScreen()),
-          (_) => false,
-        ),
+        onPressed: () => Navigator.of(context).pop(),
         splashRadius: 20,
       ),
       title: const Text('RSVP'),

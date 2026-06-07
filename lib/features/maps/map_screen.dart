@@ -25,8 +25,15 @@ class MapScreen extends StatelessWidget {
   }
 }
 
-class _MapBody extends StatelessWidget {
+class _MapBody extends StatefulWidget {
   const _MapBody();
+
+  @override
+  State<_MapBody> createState() => _MapBodyState();
+}
+
+class _MapBodyState extends State<_MapBody> {
+  GoogleMapController? _mapController;
 
   Set<Marker> _buildMarkers(MapViewModel vm) {
     return vm.sessions.map((session) {
@@ -36,6 +43,27 @@ class _MapBody extends StatelessWidget {
         onTap: () => vm.selectSession(session),
       );
     }).toSet();
+  }
+
+  Future<void> _onLocationPressed(MapViewModel vm) async {
+    final position = await vm.goToMyLocation();
+    if (position != null && _mapController != null) {
+      await _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(position.latitude, position.longitude),
+          15,
+        ),
+      );
+    }
+    if (vm.locationError != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(vm.locationError!),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      vm.clearLocationError();
+    }
   }
 
   @override
@@ -55,7 +83,7 @@ class _MapBody extends StatelessWidget {
             markers: markers,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
-            onMapCreated: (controller) {},
+            onMapCreated: (controller) => _mapController = controller,
             onTap: (_) => vm.clearSelection(),
           ),
 
@@ -200,6 +228,16 @@ class _MapBody extends StatelessWidget {
                 ),
               ),
             ),
+
+          // ── My Location Button ──────────────────────────────────────────
+          Positioned(
+            bottom: vm.selectedSession != null ? 120 : 24,
+            right: 16,
+            child: _MapIconButton(
+              icon: vm.isLocating ? Icons.hourglass_empty : Icons.my_location,
+              onTap: vm.isLocating ? () {} : () => _onLocationPressed(vm),
+            ),
+          ),
 
           // ── Session Preview Card ────────────────────────────────────────
           if (vm.selectedSession != null)

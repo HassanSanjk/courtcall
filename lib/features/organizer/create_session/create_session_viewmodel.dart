@@ -20,6 +20,7 @@ class CreateSessionViewModel extends ChangeNotifier {
   String? errorMessage;
   List<Venue> venues = [];
   Venue? selectedVenue;
+  String? selectedCourt;
 
   CreateSessionViewModel({
     required SessionRepository sessionRepo,
@@ -70,15 +71,28 @@ class CreateSessionViewModel extends ChangeNotifier {
 
   void setVenue(Venue venue) {
     selectedVenue = venue;
+    // Reset court when venue changes — previous court no longer valid.
+    selectedCourt = null;
     notifyListeners();
   }
+
+  void setCourt(String court) {
+    selectedCourt = court;
+    notifyListeners();
+  }
+
+  /// Courts available for the currently selected venue.
+  List<String> get availableCourts => selectedVenue?.courts ?? [];
 
   Future<bool> createSession({
     required String cost,
     required String notes,
   }) async {
-    if (selectedVenue == null || selectedDate == null || startTime == null || endTime == null) {
-      errorMessage = 'Please select a Venue, Date, Start Time, and End Time.';
+    if (selectedVenue == null ||
+        selectedDate == null ||
+        startTime == null ||
+        endTime == null) {
+      errorMessage = 'Please fill in Venue, Date, Start Time, and End Time.';
       notifyListeners();
       return false;
     }
@@ -95,15 +109,20 @@ class CreateSessionViewModel extends ChangeNotifier {
         'organizerId': organizerId,
         'venueId': selectedVenue!.venueId,
         'venueName': selectedVenue!.name,
-        'court': '',
+        'court': selectedCourt ?? '',
         'date': dateStr,
         'dateTimestamp': selectedDate!,
         'time': timeStr,
         'maxPlayers': maxPlayers,
-        'rsvpCount': 0,
         'costPerPlayer': double.tryParse(cost.trim()) ?? 0.0,
+        'notes': notes.trim(),
         'status': 'upcoming',
-      });
+      }).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw TimeoutException(
+          'Session creation timed out — check Firestore security rules.',
+        ),
+      );
       return true;
     } catch (e) {
       if (e is TimeoutException) {

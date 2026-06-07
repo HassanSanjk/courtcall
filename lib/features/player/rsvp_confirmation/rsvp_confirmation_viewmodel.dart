@@ -4,13 +4,6 @@ import '../../../models/models.dart';
 import '../../../repositories/player_repository.dart';
 import '../../../repositories/venue_repository.dart';
 
-/// ViewModel for [RsvpConfirmationScreen].
-///
-/// Provides:
-///   - Current player's RSVP status for the session
-///   - Live stream of confirmed RSVPs (for participant list)
-///   - Confirm / decline / waitlist actions
-///   - Consequence visibility data (remaining spots, underpay risk)
 class RsvpConfirmationViewModel extends ChangeNotifier {
   RsvpConfirmationViewModel({
     required PlayerRepository repository,
@@ -37,12 +30,9 @@ class RsvpConfirmationViewModel extends ChangeNotifier {
   String? _venueImageUrl;
   String? get venueImageUrl => _venueImageUrl;
 
-  List<Rsvp> _confirmedRsvps = [];
+  // All RSVPs for this session — confirmed + pending + declined.
+  List<Rsvp> _allRsvps = [];
 
-  // FIX: _currentStatus tracks the local UI state only.
-  // 'waiting' is a local-only value — it is never written to Firestore as an
-  // Rsvp status. Waitlist entries live in a separate waitlist collection.
-  // Valid Firestore values: 'confirmed' | 'pending' | 'declined'.
   String? _currentStatus;
 
   bool _isLoading = false;
@@ -52,36 +42,35 @@ class RsvpConfirmationViewModel extends ChangeNotifier {
 
   StreamSubscription<List<Rsvp>>? _rsvpsSub;
 
-  List<Rsvp> get confirmedRsvps => _confirmedRsvps;
+  /// Only the confirmed attendees — used for the participant list.
+  List<Rsvp> get confirmedRsvps =>
+      _allRsvps.where((r) => r.isConfirmed).toList();
+
   String? get currentStatus => _currentStatus;
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
 
-  int get goingCount => _session.rsvpCount;
-  int get maybeCount => 0; // Schema tracks confirmed/pending/declined only
-  int get outCount => 0;
+  /// Real going count derived from live RSVP stream.
+  int get goingCount => _allRsvps.where((r) => r.isConfirmed).length;
+
+  /// Real maybe count derived from live RSVP stream.
+  int get maybeCount => _allRsvps.where((r) => r.isPending).length;
+
+  /// Real out count derived from live RSVP stream.
+  int get outCount => _allRsvps.where((r) => r.isDeclined).length;
 
   bool get isFull => _session.isFull;
 
-  /// Whether declining would leave the session underpaid.
-  ///
-  /// Uses _session.rsvpCount, which is populated from the constructor-time
-  /// snapshot. This is acceptable for the underpay warning — a slight staleness
-  /// is fine; the organizer's RSVP tracker is the source of truth.
-  /// NOTE: rsvpCount is read-only on the client; it is maintained by a
-  /// Cloud Function. Do not write to it from player screens.
   bool get wouldCauseUnderpay {
     if (_currentStatus != 'confirmed') return false;
     final remaining = _session.rsvpCount - 1;
-    // Flag if leaving would drop below 60% of max players.
     return remaining < (_session.maxPlayers * 0.6).ceil();
   }
 
-  /// Remaining spots available.
-  int get spotsRemaining => (_session.maxPlayers - _session.rsvpCount)
-      .clamp(0, _session.maxPlayers);
+  int get spotsRemaining =>
+      (_session.maxPlayers - _session.rsvpCount).clamp(0, _session.maxPlayers);
 
   void _init() {
     _isLoading = true;
@@ -116,7 +105,7 @@ class RsvpConfirmationViewModel extends ChangeNotifier {
   }
 
   void _onRsvpsUpdate(List<Rsvp> rsvps) {
-    _confirmedRsvps = rsvps;
+    _allRsvps = rsvps;
     notifyListeners();
   }
 
@@ -137,6 +126,7 @@ class RsvpConfirmationViewModel extends ChangeNotifier {
         playerId: _playerId,
         playerName: _playerName,
         status: 'confirmed',
+        amount: _session.costPerPlayer,
       );
       _currentStatus = 'confirmed';
       _successMessage = "You're going! See you on the court.";
@@ -205,10 +195,9 @@ class RsvpConfirmationViewModel extends ChangeNotifier {
         playerId: _playerId,
         playerName: _playerName,
       );
-      // 'waiting' is LOCAL UI STATE ONLY — never written to Firestore.
-      // Waitlist entries live in a separate waitlist/{sessionId}/entries collection.
       _currentStatus = 'waiting';
-      _successMessage = "You're on the waitlist. We'll notify you if a spot opens.";
+      _successMessage =
+          "You're on the waitlist. We'll notify you if a spot opens.";
     } catch (_) {
       _errorMessage = 'Could not join waitlist. Please try again.';
     } finally {
@@ -217,7 +206,11 @@ class RsvpConfirmationViewModel extends ChangeNotifier {
     }
   }
 
-  void clearError() => _clearMessages();
+  /// Clears only the error banner — leaves the success message visible.
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
 
   void _clearMessages() {
     _errorMessage = null;

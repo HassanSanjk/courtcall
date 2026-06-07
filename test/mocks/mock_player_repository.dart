@@ -201,6 +201,7 @@ class MockPlayerRepository implements PlayerRepository {
     required String playerName,
     required String status,
     String? declineReason,
+    double amount = 0.0,
   }) async {
     await Future.delayed(const Duration(milliseconds: 400));
     final key = 'rsvp_${sessionId}_$playerId';
