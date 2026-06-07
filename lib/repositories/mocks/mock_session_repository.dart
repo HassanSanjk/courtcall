@@ -72,4 +72,6 @@ class MockSessionRepository implements SessionRepository {
     _sessions.removeWhere((s) => s.id == sessionId);
     _ctrl.add(List.from(_sessions));
   }
+
+  void dispose() => _ctrl.close();
 }

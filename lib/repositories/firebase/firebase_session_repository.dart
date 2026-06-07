@@ -1,0 +1,61 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../session_repository.dart';
+import '../../models/models.dart';
+
+class FirebaseSessionRepository implements SessionRepository {
+  final FirebaseFirestore _db;
+
+  FirebaseSessionRepository({FirebaseFirestore? db})
+      : _db = db ?? FirebaseFirestore.instance;
+
+  @override
+  Stream<List<Session>> watchUpcomingSessions(String organizerId) {
+    return _db
+        .collection('sessions')
+        .where('organizerId', isEqualTo: organizerId)
+        .where('status', isEqualTo: 'upcoming')
+        .orderBy('dateTimestamp')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => Session.fromMap(doc.id, doc.data()))
+            .toList());
+  }
+
+  @override
+  Future<String> createSession(Map<String, dynamic> data) async {
+    final ref = _db.collection('sessions').doc();
+    final id = ref.id;
+    final dateTimestamp = data['dateTimestamp'];
+    await ref.set({
+      'sessionId': id,
+      'sport': data['sport'] ?? 'futsal',
+      'organizerId': data['organizerId'] ?? '',
+      'venueId': data['venueId'] ?? '',
+      'venueName': data['venueName'] ?? '',
+      'court': data['court'] ?? '',
+      'date': data['date'] ?? '',
+      'dateTimestamp': dateTimestamp is DateTime
+          ? Timestamp.fromDate(dateTimestamp)
+          : FieldValue.serverTimestamp(),
+      'time': data['time'] ?? '',
+      'maxPlayers': data['maxPlayers'] ?? 0,
+      'rsvpCount': 0,
+      'costPerPlayer': (data['costPerPlayer'] as num?)?.toDouble() ?? 0.0,
+      'status': 'upcoming',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return id;
+  }
+
+  @override
+  Future<void> updateSession(String sessionId, Map<String, dynamic> data) async {
+    await _db.collection('sessions').doc(sessionId).update(data);
+  }
+
+  @override
+  Future<void> cancelSession(String sessionId) async {
+    await _db.collection('sessions').doc(sessionId).update({
+      'status': 'cancelled',
+    });
+  }
+}

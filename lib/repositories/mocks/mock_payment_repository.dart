@@ -40,4 +40,6 @@ class MockPaymentRepository implements PaymentRepository {
       _ctrl.add(List.from(_payments));
     }
   }
+
+  void dispose() => _ctrl.close();
 }
