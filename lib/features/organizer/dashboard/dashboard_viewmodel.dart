@@ -38,12 +38,18 @@ class DashboardViewModel extends ChangeNotifier {
           .length;
 
   void _init() {
-    _sessionSub = _sessionRepo.watchUpcomingSessions(organizerId).listen((list) {
-      _sessions = list;
-      _loading = false;
-      _updatePaymentListeners(list);
-      notifyListeners();
-    });
+    _sessionSub = _sessionRepo.watchUpcomingSessions(organizerId).listen(
+      (list) {
+        _sessions = list;
+        _loading = false;
+        _updatePaymentListeners(list);
+        notifyListeners();
+      },
+      onError: (_) {
+        _loading = false;
+        notifyListeners();
+      },
+    );
   }
 
   void _updatePaymentListeners(List<Session> sessions) {

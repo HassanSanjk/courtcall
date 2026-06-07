@@ -14,12 +14,15 @@ class FirebaseSessionRepository implements SessionRepository {
     return _db
         .collection('sessions')
         .where('organizerId', isEqualTo: organizerId)
-        .where('status', isEqualTo: 'upcoming')
-        .orderBy('dateTimestamp')
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => Session.fromMap(doc.id, doc.data()))
-            .toList());
+        .map((snap) {
+          final sessions = snap.docs
+              .map((doc) => Session.fromMap(doc.id, doc.data()))
+              .where((s) => s.status == 'upcoming')
+              .toList();
+          sessions.sort((a, b) => a.dateTimestamp.compareTo(b.dateTimestamp));
+          return sessions;
+        });
   }
 
   @override
