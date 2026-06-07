@@ -1,8 +1,14 @@
 // lib/dev_menu.dart
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'seed_firestore.dart';
+import 'features/player/payment_history/payment_history_screen.dart';
+import 'core/widgets/player_shell_screen.dart';
+import 'features/venue/venue_dashboard/venue_dashboard_screen.dart';
+import 'features/venue/availability/availability_screen.dart';
+import 'features/venue/cancellation_alert/cancellation_alert_screen.dart';
+import 'features/venue/analytics/analytics_screen.dart';
+import 'features/organizer/dashboard/dashboard_screen.dart';
 
 class DevMenu extends StatelessWidget {
   const DevMenu({super.key});
@@ -71,7 +77,7 @@ class DevMenu extends StatelessWidget {
             Expanded(
               child: ListView.separated(
                 itemCount: screens.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final (label, path) = screens[index];
                   return ListTile(
@@ -88,7 +94,22 @@ class DevMenu extends StatelessWidget {
                     ),
                     trailing: const Icon(Icons.chevron_right,
                         color: Color(0xFF9CA3AF)),
-                    onTap: () => context.go(path),
+                    onTap: () {
+                      final screen = switch (path) {
+                        '/player/session-feed' => const PlayerShellScreen(),
+                        '/player/payment-history' => const PaymentHistoryScreen(),
+                        '/venue/dashboard' => const VenueDashboardScreen(),
+                        '/venue/availability' => const AvailabilityScreen(venueId: ''),
+                        '/venue/cancellation-alert' => const CancellationAlertScreen(venueId: ''),
+                        '/venue/analytics' => const AnalyticsScreen(venueId: ''),
+                        '/organizer/dashboard' => const DashboardScreen(),
+                        _ => const Scaffold(body: Center(child: Text('Unknown path'))),
+                      };
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => screen),
+                      );
+                    },
                   );
                 },
               ),

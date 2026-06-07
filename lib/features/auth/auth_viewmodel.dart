@@ -21,6 +21,13 @@ class AuthViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   AppUser? get currentUser => _currentUser;
 
+  void initialize() {
+    _repo.authStateChanges.listen((user) {
+      _currentUser = user;
+      notifyListeners();
+    });
+  }
+
   String get playerId   => _currentUser?.uid  ?? 'player_001';
   String get playerName => _currentUser?.name ?? 'Player';
 

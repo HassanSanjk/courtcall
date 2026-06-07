@@ -11,25 +11,62 @@ class FirebasePlayerRepository implements PlayerRepository {
 
   @override
   Stream<List<Session>> watchPlayerSessions(String playerId) {
-    return _db
+    final controller = StreamController<List<Session>>.broadcast();
+
+    List<Session> discovered = [];
+    List<Session> rsvpLinked = [];
+
+    void emit() {
+      final merged = <String, Session>{};
+      for (final s in discovered) {
+        merged[s.sessionId] = s;
+      }
+      for (final s in rsvpLinked) {
+        merged[s.sessionId] = s;
+      }
+      controller.add(merged.values.toList());
+    }
+
+    // Discovery: all upcoming sessions (no RSVP required)
+    final upcomingSub = _db
+        .collection('sessions')
+        .where('status', isEqualTo: 'upcoming')
+        .orderBy('dateTimestamp')
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((doc) => Session.fromMap(doc.id, doc.data())).toList())
+        .listen((sessions) {
+      discovered = sessions;
+      emit();
+    });
+
+    final rsvpSub = _db
         .collection('rsvps')
         .where('playerId', isEqualTo: playerId)
         .snapshots()
-        .asyncMap((snapshot) async {
+        .asyncMap<List<Session>>((snapshot) async {
       final sessionIds =
           snapshot.docs.map((doc) => doc.data()['sessionId'] as String).toSet();
-
       if (sessionIds.isEmpty) return [];
 
       final sessionDocs = await Future.wait(
         sessionIds.map((id) => _db.collection('sessions').doc(id).get()),
       );
-
       return sessionDocs
           .where((doc) => doc.exists)
           .map((doc) => Session.fromMap(doc.id, doc.data()!))
           .toList();
+    }).listen((sessions) {
+      rsvpLinked = sessions;
+      emit();
     });
+
+    controller.onCancel = () {
+      upcomingSub.cancel();
+      rsvpSub.cancel();
+    };
+
+    return controller.stream;
   }
 
   @override

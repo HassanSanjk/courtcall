@@ -1,25 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:courtcall/features/venue/venue_dashboard/venue_dashboard_screen.dart';
-import 'package:courtcall/features/venue/venue_dashboard/venue_dashboard_viewmodel.dart';
 import 'package:courtcall/repositories/venue_dashboard_repository.dart';
 
 class MockVenueDashboardRepository extends Mock implements VenueDashboardRepository {}
 
-Widget Function(Widget) testAppBuilder = (Widget child) => MaterialApp.router(
-  routerConfig: GoRouter(
-    initialLocation: '/',
-    routes: [
-      GoRoute(path: '/', builder: (context, state) => child),
-      GoRoute(path: '/venue/availability', builder: (context, state) => const Scaffold(body: Text('Availability'))),
-      GoRoute(path: '/maps', builder: (context, state) => const Scaffold(body: Text('Maps'))),
-      GoRoute(path: '/login', builder: (context, state) => const Scaffold(body: Text('Login'))),
-    ],
-  ),
-);
+Widget Function(Widget) testAppBuilder = (Widget child) => MaterialApp(home: child);
 
 void main() {
   testWidgets('shows loading indicator then renders KPIs', (tester) async {

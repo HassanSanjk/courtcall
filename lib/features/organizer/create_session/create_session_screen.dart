@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/sports.dart';
+import '../../../core/theme/app_colors.dart';
 import 'create_session_viewmodel.dart';
 
 class CreateSessionScreen extends StatefulWidget {
@@ -12,15 +14,12 @@ class CreateSessionScreen extends StatefulWidget {
 
 class _CreateSessionScreenState extends State<CreateSessionScreen> {
   static const _navy = Color(0xFF1B2A4A);
-  static const _lightGrey = Color(0xFFEFF1F4);
 
-  final venueController = TextEditingController();
   final costController = TextEditingController();
   final notesController = TextEditingController();
 
   @override
   void dispose() {
-    venueController.dispose();
     costController.dispose();
     notesController.dispose();
     super.dispose();
@@ -59,31 +58,6 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
     );
   }
 
-  Widget _sportTab(String sport, CreateSessionViewModel vm) {
-    final isSelected = vm.selectedSport == sport;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => vm.setSport(sport),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected ? _navy : _lightGrey,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            sport,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isSelected ? Colors.white : _navy,
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _pickDate(CreateSessionViewModel vm) async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -111,6 +85,64 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
     if (picked != null) vm.setEndTime(picked);
   }
 
+  void _pickVenue(BuildContext context, CreateSessionViewModel vm) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.55,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'Select Venue',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              if (vm.venues.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text(
+                    'No venues found.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: vm.venues.map((venue) => ListTile(
+                      title: Text(venue.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(venue.address,
+                          style: const TextStyle(fontSize: 12)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        vm.setVenue(venue);
+                        Navigator.pop(context);
+                      },
+                    )).toList(),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _tappableField({
     required String hint,
     required String? displayValue,
@@ -124,12 +156,19 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(
-          displayValue ?? hint,
-          style: TextStyle(
-            color: displayValue != null ? _navy : const Color(0xFF9E9E9E),
-            fontSize: 16,
-          ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                displayValue ?? hint,
+                style: TextStyle(
+                  color: displayValue != null ? _navy : const Color(0xFF9E9E9E),
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down, color: Color(0xFF9E9E9E)),
+          ],
         ),
       ),
     );
@@ -137,7 +176,6 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
 
   Future<void> _submit(CreateSessionViewModel vm) async {
     final success = await vm.createSession(
-      venue: venueController.text,
       cost: costController.text,
       notes: notesController.text,
     );
@@ -154,6 +192,7 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<CreateSessionViewModel>();
+    final venueText = vm.selectedVenue?.name;
 
     final dateText = vm.selectedDate != null
         ? DateFormat('EEEE, d MMMM yyyy').format(vm.selectedDate!)
@@ -178,22 +217,35 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 1. Sport Selector
-            Row(
-              children: [
-                _sportTab('Futsal', vm),
-                const SizedBox(width: 10),
-                _sportTab('Badminton', vm),
-              ],
+            _label('Sport'),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              initialValue: vm.selectedSport,
+              decoration: _fieldDecoration('Select sport'),
+              isExpanded: true,
+              items: allSports.map((s) => DropdownMenuItem(
+                value: s,
+                child: Text(s),
+              )).toList(),
+              onChanged: (v) {
+                if (v != null) vm.setSport(v);
+              },
             ),
 
             // 2. Venue
             const SizedBox(height: 16),
             _label('Venue'),
             const SizedBox(height: 6),
-            TextField(
-              controller: venueController,
-              decoration: _fieldDecoration('Nexus Futsal, Cheras'),
-            ),
+            vm.isLoadingVenues
+                ? const SizedBox(
+                    height: 48,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                : _tappableField(
+                    hint: 'Select a venue',
+                    displayValue: venueText,
+                    onTap: () => _pickVenue(context, vm),
+                  ),
 
             // 3. Date
             const SizedBox(height: 16),

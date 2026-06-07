@@ -1,234 +1,455 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+
+import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../models/models.dart';
 import '../../../repositories/player_repository.dart';
 import '../../auth/auth_viewmodel.dart';
-import 'session_feed_viewmodel.dart';
 import '../rsvp_confirmation/rsvp_confirmation_screen.dart';
+import 'session_feed_viewmodel.dart';
 
-/// Session Feed — the Player's home screen.
-///
-/// Shows two tabs: Upcoming sessions and Past sessions.
-/// Each session is rendered as a [SessionCard] with inline RSVP actions.
-/// Tapping a card opens [RsvpConfirmationScreen] for the full RSVP flow.
-///
-/// TODO(integration): replace Navigator.push with go_router when Mohammed
-/// wires the navigation router in week 6.
+
 class SessionFeedScreen extends StatelessWidget {
-  SessionFeedScreen({super.key});
+  const SessionFeedScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final authVm = context.read<AuthViewModel>();
     final playerId = authVm.currentUser?.uid ?? 'player_001';
     final playerName = authVm.currentUser?.name ?? 'Player';
 
-    return DefaultTabController(
-      length: 2,
-      child: ChangeNotifierProvider(
-        create: (_) => SessionFeedViewModel(
-          repository: context.read<PlayerRepository>(),
-          playerId: playerId,
-          playerName: playerName,
-        ),
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text('Sessions'),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.notifications_outlined),
-                tooltip: 'Notifications',
-                onPressed: () {
-                  // Notification centre — future enhancement.
-                },
-              ),
-              IconButton(
-                icon: Icon(Icons.logout_outlined),
-                tooltip: 'Sign out',
-                onPressed: () => _confirmSignOut(context),
-              ),
-            ],
-            bottom: TabBar(
-              labelColor: colorScheme.primary,
-              unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-              indicatorColor: colorScheme.primary,
-              tabs: const [
-                Tab(text: 'Upcoming'),
-                Tab(text: 'Past'),
-              ],
-            ),
-          ),
-          body: _SessionFeedBody(),
+    return ChangeNotifierProvider(
+      create: (_) => SessionFeedViewModel(
+        repository: context.read<PlayerRepository>(),
+        playerId: playerId,
+        playerName: playerName,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: _FeedBody(),
         ),
       ),
     );
-  }
-
-  /// Shows a confirmation dialog before signing out to prevent accidental taps.
-  Future<void> _confirmSignOut(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Sign out?'),
-        content: Text('You will be returned to the login screen.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Sign out'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && context.mounted) {
-      context.read<AuthViewModel>().signOut();
-    }
   }
 }
 
-class _SessionFeedBody extends StatelessWidget {
-  _SessionFeedBody();
+// ─── Body ─────────────────────────────────────────────────────────────────────
 
+class _FeedBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<SessionFeedViewModel>();
 
-    if (vm.isLoading) {
-      return Center(child: CircularProgressIndicator());
-    }
-
-    if (vm.errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.wifi_off_outlined,
-                  size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
-              SizedBox(height: 16.0),
-              Text(vm.errorMessage!,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium),
-              SizedBox(height: 16.0),
-              ElevatedButton(
-                onPressed: vm.clearError,
-                child: Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return TabBarView(
+    return Column(
       children: [
-        _SessionList(
-          sessions: vm.upcomingSessions,
-          vm: vm,
-          emptyMessage: 'No upcoming sessions.\nCheck back later!',
-        ),
-        _SessionList(
-          sessions: vm.pastSessions,
-          vm: vm,
-          emptyMessage: 'No past sessions yet.',
-          isPast: true,
+        _FeedHeader(name: vm.playerId == 'player_001' ? 'Player' : vm.playerId),
+        Expanded(
+          child: vm.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : vm.errorMessage != null
+                  ? _ErrorState(message: vm.errorMessage!, onRetry: vm.clearError)
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          const SectionHeader(title: 'Upcoming Sessions'),
+                          const SizedBox(height: 12),
+                          if (vm.upcomingSessions.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 24),
+                              child: Center(
+                                child: Text(
+                                  'No upcoming sessions',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            ...vm.upcomingSessions.map(
+                              (s) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _SessionCard(
+                                  session: s,
+                                  rsvpStatus: vm.rsvpStatusFor(s.sessionId),
+                                  confirmedNames: vm.confirmedPlayerNamesFor(s.sessionId),
+                                  isLoading: vm.isSessionLoading(s.sessionId),
+                                  onGoing: () => vm.confirmAttendance(s.sessionId),
+                                  onCantMakeIt: () => vm.declineAttendance(s.sessionId),
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => RsvpConfirmationScreen(session: s),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 20),
+                          _PastSessionsHeader(),
+                          const SizedBox(height: 12),
+                          if (vm.pastSessions.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 24),
+                              child: Center(
+                                child: Text(
+                                  'No past sessions',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            ...vm.pastSessions.map(
+                              (s) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _SessionCard(
+                                  session: s,
+                                  rsvpStatus: vm.rsvpStatusFor(s.sessionId),
+                                  confirmedNames: vm.confirmedPlayerNamesFor(s.sessionId),
+                                  isLoading: vm.isSessionLoading(s.sessionId),
+                                  onGoing: null,
+                                  onCantMakeIt: null,
+                                  onTap: null,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
         ),
       ],
     );
   }
 }
 
-class _SessionList extends StatelessWidget {
-  _SessionList({
-    required this.sessions,
-    required this.vm,
-    required this.emptyMessage,
-    this.isPast = false,
-  });
+// ─── Error State ──────────────────────────────────────────────────────────────
 
-  final List<Session> sessions;
-  final SessionFeedViewModel vm;
-  final String emptyMessage;
-  final bool isPast;
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    if (sessions.isEmpty) {
-      return Center(
-        child: Text(
-          emptyMessage,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.wifi_off_outlined,
+                size: 48, color: AppColors.onSurfaceVariant),
+            const SizedBox(height: 16),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
         ),
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 600;
-        final pad = isWide ? 24.0 : 16.0;
-
-        if (isWide) {
-          return GridView.builder(
-            padding: EdgeInsets.all(pad),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 1.6,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: sessions.length,
-            itemBuilder: (context, index) {
-              final session = sessions[index];
-              return SessionCard(
-                title: session.sport,
-                date: session.date,
-                time: session.time,
-                venue: session.venueName,
-                playerCount: session.rsvpCount,
-                maxPlayers: session.maxPlayers,
-                status: session.status,
-                sport: session.sport,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => RsvpConfirmationScreen(session: session),
-                  ),
-                ),
-              );
-            },
-          );
-        }
-
-        return ListView.builder(
-          padding: EdgeInsets.all(pad),
-          itemCount: sessions.length,
-          itemBuilder: (context, index) {
-            final session = sessions[index];
-            return SessionCard(
-              title: session.sport,
-              date: session.date,
-              time: session.time,
-              venue: session.venueName,
-              playerCount: session.rsvpCount,
-              maxPlayers: session.maxPlayers,
-              status: session.status,
-              sport: session.sport,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => RsvpConfirmationScreen(session: session),
-                ),
-              ),
-            );
-          },
-        );
-      },
+      ),
     );
   }
 }
+
+// ─── Feed Header ──────────────────────────────────────────────────────────────
+
+class _FeedHeader extends StatelessWidget {
+  final String name;
+
+  const _FeedHeader({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = name.isNotEmpty ? name.substring(0, 2).toUpperCase() : '?';
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.outline)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Upcoming Sessions',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.5,
+            ),
+          ),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              color: AppColors.darkNavy,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Session Card ─────────────────────────────────────────────────────────────
+
+String _sportEmoji(String? sport) {
+  switch (sport?.toLowerCase()) {
+    case 'futsal':
+      return '⚽';
+    case 'badminton':
+      return '🏸';
+    case 'basketball':
+      return '🏀';
+    case 'volleyball':
+      return '🏐';
+    default:
+      return '⚽';
+  }
+}
+
+StatusBadge _badgeFor(String? rsvpStatus) {
+  switch (rsvpStatus) {
+    case 'confirmed':
+      return StatusBadge.paid();
+    case 'pending':
+    case 'maybe':
+      return StatusBadge.pending();
+    case 'declined':
+      return StatusBadge.declined();
+    case 'waiting':
+      return StatusBadge.waitlist();
+    default:
+      return StatusBadge.pending();
+  }
+}
+
+List<AvatarData> _avatarsFromNames(List<String> names) {
+  const colors = [
+    AppColors.avatarNavy,
+    AppColors.avatarBlue,
+    AppColors.avatarTeal,
+    AppColors.avatarPurple,
+    AppColors.avatarOrange,
+  ];
+  return names.take(3).toList().asMap().entries.map((e) {
+    final name = e.value;
+    final initials = name.isNotEmpty ? name.substring(0, 2).toUpperCase() : '?';
+    return AvatarData(initials, colors[e.key % colors.length]);
+  }).toList();
+}
+
+class _SessionCard extends StatelessWidget {
+  final Session session;
+  final String? rsvpStatus;
+  final List<String> confirmedNames;
+  final bool isLoading;
+  final VoidCallback? onGoing;
+  final VoidCallback? onCantMakeIt;
+  final VoidCallback? onTap;
+
+  const _SessionCard({
+    required this.session,
+    this.rsvpStatus,
+    this.confirmedNames = const [],
+    this.isLoading = false,
+    this.onGoing,
+    this.onCantMakeIt,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final avatars = _avatarsFromNames(confirmedNames);
+    final overflow = (session.rsvpCount - avatars.length).clamp(0, 999);
+    final isPast = session.status != 'upcoming';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_sportEmoji(session.sport),
+                    style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${session.venueName} · ${session.court}',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _badgeFor(rsvpStatus),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              session.venueName,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${session.date} · ${session.time}',
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Text(
+                  '${session.rsvpCount} of ${session.maxPlayers} going',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                AvatarStack(avatars: avatars, overflow: overflow),
+              ],
+            ),
+            if (!isPast && onGoing != null && onCantMakeIt != null) ...[
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: _GoingButton(onPressed: onGoing!, isLoading: isLoading)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _CantMakeItButton(onPressed: onCantMakeIt!, isLoading: isLoading)),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GoingButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final bool isLoading;
+
+  const _GoingButton({required this.onPressed, required this.isLoading});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: isLoading ? null : onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.darkNavy,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: isLoading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  color: Colors.white, strokeWidth: 2),
+            )
+          : const Text(
+              "I'm Going",
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+    );
+  }
+}
+
+class _CantMakeItButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final bool isLoading;
+
+  const _CantMakeItButton({required this.onPressed, required this.isLoading});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: isLoading ? null : onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.error,
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        side: const BorderSide(color: AppColors.error, width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: isLoading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  color: AppColors.error, strokeWidth: 2),
+            )
+          : const Text(
+              "Can't Make It",
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+    );
+  }
+}
+
+// ─── Past Sessions Header ─────────────────────────────────────────────────────
+
+class _PastSessionsHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: const [
+          Text(
+            'Past Sessions',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          Icon(Icons.keyboard_arrow_down_rounded,
+              color: AppColors.textSecondary, size: 24),
+        ],
+      ),
+    );
+  }
+}
+
+

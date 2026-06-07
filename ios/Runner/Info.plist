@@ -47,6 +47,10 @@
 			</array>
 		</dict>
 	</dict>
+	<key>GMSApiKey</key>
+	<string>AIzaSyC-Jdsz9n4QoO8BsUOwTLKGVPdsF7RnwAw</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>CourtCall needs access to upload venue photos.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

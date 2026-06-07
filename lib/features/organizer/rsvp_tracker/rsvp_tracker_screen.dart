@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import '../../../models/models.dart';
+import '../../../repositories/session_repository.dart';
+import '../../../repositories/payment_repository.dart';
 import '../cancellation/cancellation_screen.dart';
 import '../cancellation/cancellation_viewmodel.dart';
 import '../payment_ledger/payment_ledger_screen.dart';
@@ -13,7 +15,8 @@ const Color _alertAmber  = Color(0xFFFFA726);
 const Color _bgAsh       = Color(0xFFF4F6F9);
 
 class RsvpTrackerScreen extends StatelessWidget {
-  const RsvpTrackerScreen({super.key});
+  final Session session;
+  const RsvpTrackerScreen({super.key, required this.session});
 
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
@@ -47,7 +50,7 @@ class RsvpTrackerScreen extends StatelessWidget {
     );
   }
 
-  Widget _playerRow(PlayerRsvp p) {
+  Widget _playerRow(PlayerRsvpEntry p) {
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 16, bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -96,20 +99,20 @@ class RsvpTrackerScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: _navy),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Friday Futsal · 9 May',
-              style: TextStyle(
+              vm.title,
+              style: const TextStyle(
                 color: _navy,
                 fontWeight: FontWeight.bold,
                 fontSize: 17,
               ),
             ),
             Text(
-              'Nexus Futsal Court 3 · 8PM',
-              style: TextStyle(color: Colors.black54, fontSize: 12),
+              vm.subtitle,
+              style: const TextStyle(color: Colors.black54, fontSize: 12),
             ),
           ],
         ),
@@ -229,8 +232,12 @@ class RsvpTrackerScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
-          create: (_) => CancellationViewModel(),
-          child: const CancellationScreen(),
+          create: (_) => CancellationViewModel(
+            sessionRepo: context.read<SessionRepository>(),
+            sessionId: session.sessionId,
+            session: session,
+          ),
+          child: CancellationScreen(session: session),
         ),
       ),
     );
@@ -241,7 +248,10 @@ class RsvpTrackerScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
-          create: (_) => PaymentLedgerViewModel(),
+          create: (_) => PaymentLedgerViewModel(
+            paymentRepo: context.read<PaymentRepository>(),
+            sessionId: session.sessionId,
+          ),
           child: const PaymentLedgerScreen(),
         ),
       ),

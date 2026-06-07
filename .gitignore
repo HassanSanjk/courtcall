@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Project context files
+COURTCALL_ANCHORED_SUMMARY.md
+courtcall_project_context.txt
+flutter_01.png
+desktop.ini

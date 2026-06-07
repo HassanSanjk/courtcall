@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:courtcall/repositories/mocks/mock_session_repository.dart';
+import 'package:courtcall/models/models.dart';
+import 'mocks/mock_session_repository.dart';
+import 'mocks/mock_venue_repository.dart';
 import 'package:courtcall/features/organizer/create_session/create_session_viewmodel.dart';
 
 void main() {
   late MockSessionRepository repo;
+  late MockVenueRepository venueRepo;
   late CreateSessionViewModel vm;
 
   setUp(() {
     repo = MockSessionRepository();
-    vm = CreateSessionViewModel(repo: repo);
+    venueRepo = MockVenueRepository();
+    vm = CreateSessionViewModel(
+      sessionRepo: repo,
+      venueRepo: venueRepo,
+      organizerId: 'org_1',
+    );
   });
 
   tearDown(() {
@@ -95,29 +103,36 @@ void main() {
       expect(vm.endTime, time);
     });
 
-    test('createSession fails when venue is empty', () async {
+    test('setVenue stores the venue', () {
+      final venue = Venue(venueId: 'v1', name: 'Nexus', address: 'KL', courts: []);
+      vm.setVenue(venue);
+      expect(vm.selectedVenue?.venueId, 'v1');
+    });
+
+    test('createSession fails when venue is not selected', () async {
       vm.setDate(DateTime(2026, 7, 15));
       vm.setStartTime(const TimeOfDay(hour: 20, minute: 0));
       vm.setEndTime(const TimeOfDay(hour: 22, minute: 0));
 
-      final result = await vm.createSession(venue: '', cost: '15', notes: '');
+      final result = await vm.createSession(cost: '15', notes: '');
       expect(result, isFalse);
     });
 
-    test('createSession sets errorMessage when venue is empty', () async {
+    test('createSession sets errorMessage when venue is not selected', () async {
       vm.setDate(DateTime(2026, 7, 15));
       vm.setStartTime(const TimeOfDay(hour: 20, minute: 0));
       vm.setEndTime(const TimeOfDay(hour: 22, minute: 0));
 
-      await vm.createSession(venue: '', cost: '15', notes: '');
+      await vm.createSession(cost: '15', notes: '');
       expect(vm.errorMessage, isNotNull);
     });
 
     test('createSession fails when selectedDate is null', () async {
       vm.setStartTime(const TimeOfDay(hour: 20, minute: 0));
       vm.setEndTime(const TimeOfDay(hour: 22, minute: 0));
+      vm.setVenue(Venue(venueId: 'v1', name: 'Test Venue', address: 'KL', courts: []));
 
-      final result = await vm.createSession(venue: 'Test Venue', cost: '15', notes: '');
+      final result = await vm.createSession(cost: '15', notes: '');
       expect(result, isFalse);
       expect(vm.errorMessage, isNotNull);
     });
@@ -125,25 +140,35 @@ void main() {
     test('createSession fails when startTime is null', () async {
       vm.setDate(DateTime(2026, 7, 15));
       vm.setEndTime(const TimeOfDay(hour: 22, minute: 0));
+      vm.setVenue(Venue(venueId: 'v1', name: 'Test Venue', address: 'KL', courts: []));
 
-      final result = await vm.createSession(venue: 'Test Venue', cost: '15', notes: '');
+      final result = await vm.createSession(cost: '15', notes: '');
       expect(result, isFalse);
     });
 
     test('createSession fails when endTime is null', () async {
       vm.setDate(DateTime(2026, 7, 15));
       vm.setStartTime(const TimeOfDay(hour: 20, minute: 0));
+      vm.setVenue(Venue(venueId: 'v1', name: 'Test Venue', address: 'KL', courts: []));
 
-      final result = await vm.createSession(venue: 'Test Venue', cost: '15', notes: '');
+      final result = await vm.createSession(cost: '15', notes: '');
       expect(result, isFalse);
+    });
+
+    test('setVenue notifies listeners', () {
+      int count = 0;
+      vm.addListener(() => count++);
+      vm.setVenue(Venue(venueId: 'v1', name: 'Nexus', address: 'KL', courts: []));
+      expect(count, 1);
     });
 
     test('createSession succeeds with all required fields', () async {
       vm.setDate(DateTime(2026, 7, 15));
       vm.setStartTime(const TimeOfDay(hour: 20, minute: 0));
       vm.setEndTime(const TimeOfDay(hour: 22, minute: 0));
+      vm.setVenue(Venue(venueId: 'v1', name: 'Nexus Futsal', address: 'KL', courts: []));
 
-      final result = await vm.createSession(venue: 'Nexus Futsal', cost: '15', notes: '');
+      final result = await vm.createSession(cost: '15', notes: '');
       expect(result, isTrue);
     });
 
@@ -151,20 +176,22 @@ void main() {
       vm.setDate(DateTime(2026, 7, 15));
       vm.setStartTime(const TimeOfDay(hour: 20, minute: 0));
       vm.setEndTime(const TimeOfDay(hour: 22, minute: 0));
+      vm.setVenue(Venue(venueId: 'v1', name: 'Test Venue', address: 'KL', courts: []));
 
-      await vm.createSession(venue: 'Test Venue', cost: '15', notes: '');
+      await vm.createSession(cost: '15', notes: '');
       expect(vm.isSaving, isFalse);
     });
 
     test('createSession success clears errorMessage', () async {
       // trigger an error first
-      await vm.createSession(venue: '', cost: '15', notes: '');
+      await vm.createSession(cost: '15', notes: '');
       expect(vm.errorMessage, isNotNull);
 
       vm.setDate(DateTime(2026, 7, 15));
       vm.setStartTime(const TimeOfDay(hour: 20, minute: 0));
       vm.setEndTime(const TimeOfDay(hour: 22, minute: 0));
-      await vm.createSession(venue: 'Test Venue', cost: '15', notes: '');
+      vm.setVenue(Venue(venueId: 'v1', name: 'Test Venue', address: 'KL', courts: []));
+      await vm.createSession(cost: '15', notes: '');
       expect(vm.errorMessage, isNull);
     });
 
@@ -172,7 +199,8 @@ void main() {
       vm.setDate(DateTime(2026, 7, 15));
       vm.setStartTime(const TimeOfDay(hour: 20, minute: 0));
       vm.setEndTime(const TimeOfDay(hour: 22, minute: 0));
-      await vm.createSession(venue: 'New Venue', cost: '20', notes: '');
+      vm.setVenue(Venue(venueId: 'v1', name: 'New Venue', address: 'KL', courts: []));
+      await vm.createSession(cost: '20', notes: '');
 
       final sessions = await repo.watchUpcomingSessions('org_1').first;
       expect(sessions.length, 4); // 3 initial + 1 created

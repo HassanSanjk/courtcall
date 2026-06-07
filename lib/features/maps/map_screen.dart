@@ -1,120 +1,185 @@
 // features/maps/map_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+
+import 'package:provider/provider.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:courtcall/repositories/firebase/firebase_map_repository.dart';
+import '../../core/theme/app_colors.dart';
+import '../../repositories/session_repository.dart';
+import '../player/rsvp_confirmation/rsvp_confirmation_screen.dart';
 import 'map_viewmodel.dart';
 
-class MapScreen extends StatefulWidget {
+class MapScreen extends StatelessWidget {
   const MapScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => MapViewModel(
+        repo: FirebaseMapRepository(),
+      ),
+      child: const _MapBody(),
+    );
+  }
 }
 
-class _MapScreenState extends State<MapScreen> {
-  late final MapViewModel _viewModel;
-  GoogleMapController? _mapController;
+class _MapBody extends StatelessWidget {
+  const _MapBody();
 
-  // Default camera position — Kuala Lumpur
-  static const _initialPosition = CameraPosition(
-    target: LatLng(3.1390, 101.6869),
-    zoom: 13,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _viewModel = MapViewModel(
-      repo: FirebaseMapRepository(),
-    );
-    _viewModel.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _viewModel.dispose();
-    _mapController?.dispose();
-    super.dispose();
-  }
-
-  Set<Marker> get _markers {
-    return _viewModel.sessions.map((session) {
+  Set<Marker> _buildMarkers(MapViewModel vm) {
+    return vm.sessions.map((session) {
       return Marker(
         markerId: MarkerId(session['id']),
         position: LatLng(session['lat'], session['lng']),
-        onTap: () => _viewModel.selectSession(session),
+        onTap: () => vm.selectSession(session),
       );
     }).toSet();
   }
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<MapViewModel>();
+    final markers = _buildMarkers(vm);
+
     return Scaffold(
       body: Stack(
         children: [
           // ── Google Map ──────────────────────────────────────────────────
           GoogleMap(
-            initialCameraPosition: _initialPosition,
-            markers: _markers,
+            initialCameraPosition: const CameraPosition(
+              target: LatLng(3.1390, 101.6869),
+              zoom: 13,
+            ),
+            markers: markers,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
-            onMapCreated: (controller) => _mapController = controller,
-            onTap: (_) => _viewModel.clearSelection(),
+            onMapCreated: (controller) {},
+            onTap: (_) => vm.clearSelection(),
           ),
 
           // ── Top Bar ─────────────────────────────────────────────────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _MapIconButton(
-                    icon: Icons.arrow_back,
-                    onTap: () => context.pop(),
+                  Row(
+                    children: [
+                      _MapIconButton(
+                        icon: Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.search,
+                                  color: AppColors.onSurfaceVariant, size: 18),
+                              const SizedBox(width: 8),
+                              Text('Search venues...',
+                                  style: TextStyle(
+                                      fontSize: 14, color: AppColors.onSurfaceVariant)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                  // ── Filter Chips ──────────────────────────────────────
+                  if (!vm.isLoading && vm.availableSports.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _FilterChip(
+                              label: 'All',
+                              selected: vm.selectedSport == null,
+                              onTap: vm.clearFilters,
+                            ),
+                            ...vm.availableSports.map((sport) => Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: _FilterChip(
+                                label: sport,
+                                selected: vm.selectedSport == sport,
+                                onTap: () => vm.setSportFilter(sport),
+                              ),
+                            )),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // ── Price Slider ──────────────────────────────────────
+                  if (!vm.isLoading)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Row(
+                        children: [
+                          Icon(Icons.attach_money,
+                              size: 18, color: AppColors.onSurfaceVariant),
+                          Expanded(
+                            child: SliderTheme(
+                              data: SliderThemeData(
+                                overlayShape: SliderComponentShape.noOverlay,
+                                activeTrackColor: AppColors.darkNavy,
+                                inactiveTrackColor: AppColors.darkNavy.withValues(alpha: 0.15),
+                                thumbColor: AppColors.darkNavy,
+                              ),
+                              child: Slider(
+                                value: vm.maxPrice == 0
+                                    ? vm.maxAvailablePrice
+                                    : vm.maxPrice,
+                                min: vm.minAvailablePrice,
+                                max: vm.maxAvailablePrice,
+                                onChanged: vm.setMaxPrice,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 48,
+                            child: Text(
+                              vm.maxPrice == 0
+                                  ? 'All'
+                                  : 'RM ${vm.maxPrice.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                  fontSize: 12, color: AppColors.onSurfaceVariant),
+                            ),
                           ),
                         ],
                       ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.search,
-                              color: Color(0xFF9CA3AF), size: 18),
-                          SizedBox(width: 8),
-                          Text('Search venues...',
-                              style: TextStyle(
-                                  fontSize: 14, color: Color(0xFF9CA3AF))),
-                        ],
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
 
           // ── Loading Indicator ───────────────────────────────────────────
-          if (_viewModel.isLoading)
+          if (vm.isLoading)
             const Center(child: CircularProgressIndicator()),
 
           // ── Session Count Chip ──────────────────────────────────────────
-          if (!_viewModel.isLoading)
+          if (!vm.isLoading)
             Positioned(
-              top: 80,
+              top: 130,
               left: 0,
               right: 0,
               child: Center(
@@ -122,11 +187,11 @@ class _MapScreenState extends State<MapScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A2E),
+                    color: AppColors.darkNavy,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${_viewModel.sessions.length} venues nearby',
+                    '${vm.sessions.length} venues nearby',
                     style: const TextStyle(
                         fontSize: 12,
                         color: Colors.white,
@@ -137,16 +202,26 @@ class _MapScreenState extends State<MapScreen> {
             ),
 
           // ── Session Preview Card ────────────────────────────────────────
-          if (_viewModel.selectedSession != null)
+          if (vm.selectedSession != null)
             Positioned(
               bottom: 24,
               left: 16,
               right: 16,
               child: _SessionPreviewCard(
-                session: _viewModel.selectedSession!,
-                onClose: _viewModel.clearSelection,
-                onTap: () {
-                  // TODO: Navigate to session detail screen
+                session: vm.selectedSession!,
+                onClose: vm.clearSelection,
+                onTap: () async {
+                  final sessionId = vm.selectedSession!['id'] as String;
+                  final nav = Navigator.of(context);
+                  final repo = context.read<SessionRepository>();
+                  final session = await repo.getSession(sessionId);
+                  if (session == null) return;
+                  if (!context.mounted) return;
+                  nav.push(
+                    MaterialPageRoute(
+                      builder: (_) => RsvpConfirmationScreen(session: session),
+                    ),
+                  );
                 },
               ),
             ),
@@ -156,7 +231,94 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
+// ─── Filter Chip ──────────────────────────────────────────────────────────────
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.darkNavy : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.darkNavy : AppColors.outline,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.darkNavy.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Session Preview Card ──────────────────────────────────────────────────────
+
+Widget _buildVenueThumbnail(String? imageUrl) {
+  if (imageUrl != null && imageUrl.isNotEmpty) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      width: 48,
+      height: 48,
+      fit: BoxFit.cover,
+      placeholder: (_, _) => Container(color: AppColors.background),
+      errorWidget: (_, _, _) => Image.asset(
+        'assets/images/venue_placeholder.png',
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+  return Image.asset(
+    'assets/images/venue_placeholder.png',
+    width: 48,
+    height: 48,
+    fit: BoxFit.cover,
+  );
+}
+
+String _sportEmoji(String? sport) {
+  switch (sport?.toLowerCase()) {
+    case 'futsal':
+      return '⚽';
+    case 'badminton':
+      return '🏸';
+    case 'basketball':
+      return '🏀';
+    case 'volleyball':
+      return '🏐';
+    default:
+      return '⚽';
+  }
+}
 
 class _SessionPreviewCard extends StatelessWidget {
   final Map<String, dynamic> session;
@@ -176,7 +338,7 @@ class _SessionPreviewCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
@@ -188,47 +350,52 @@ class _SessionPreviewCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Venue image
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                'assets/images/venue_placeholder.png',
+              child: SizedBox(
                 width: 48,
                 height: 48,
-                fit: BoxFit.cover,
+                child: _buildVenueThumbnail(session['imageUrl'] as String?),
               ),
             ),
             const SizedBox(width: 14),
 
-            // Details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${session['name']}',
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A2E))),
+                  Row(
+                    children: [
+                      Text(_sportEmoji(session['sport'] as String?),
+                          style: const TextStyle(fontSize: 16)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text('${session['name']}',
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary)),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 2),
                   Text('${session['court']} · ${session['time']}',
                       style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF6B7280))),
+                          fontSize: 12, color: AppColors.textSecondary)),
                   const SizedBox(height: 4),
                   Text('RM ${session['price'].toStringAsFixed(0)} / person',
                       style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF0D7A3E))),
+                          color: AppColors.greenBright)),
                 ],
               ),
             ),
 
-            // Close button
             GestureDetector(
               onTap: onClose,
-              child: const Icon(Icons.close,
-                  color: Color(0xFF9CA3AF), size: 20),
+              child: Icon(Icons.close,
+                  color: AppColors.textSecondary, size: 20),
             ),
           ],
         ),
@@ -253,7 +420,7 @@ class _MapIconButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -263,7 +430,7 @@ class _MapIconButton extends StatelessWidget {
             ),
           ],
         ),
-        child: Icon(icon, color: const Color(0xFF1A1A2E), size: 20),
+        child: Icon(icon, color: AppColors.textPrimary, size: 20),
       ),
     );
   }

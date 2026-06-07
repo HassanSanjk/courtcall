@@ -3,10 +3,10 @@ import 'package:courtcall/features/venue/venue_dashboard/venue_dashboard_viewmod
 import 'package:courtcall/features/venue/availability/availability_viewmodel.dart';
 import 'package:courtcall/features/venue/cancellation_alert/cancellation_alert_viewmodel.dart';
 import 'package:courtcall/features/venue/analytics/analytics_viewmodel.dart';
-import 'package:courtcall/repositories/mocks/mock_venue_dashboard_repository.dart';
-import 'package:courtcall/repositories/mocks/mock_availability_repository.dart';
-import 'package:courtcall/repositories/mocks/mock_cancellation_repository.dart';
-import 'package:courtcall/repositories/mocks/mock_analytics_repository.dart';
+import 'mocks/mock_venue_dashboard_repository.dart';
+import 'mocks/mock_availability_repository.dart';
+import 'mocks/mock_cancellation_repository.dart';
+import 'mocks/mock_analytics_repository.dart';
 
 const _testVenueId = 'venue_1';
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../models/payment.dart';
+import '../../../models/models.dart';
 import 'payment_ledger_viewmodel.dart';
 
 const Color _navy        = Color(0xFF1B2A4A);
@@ -104,6 +104,14 @@ class PaymentLedgerScreen extends StatelessWidget {
     );
   }
 
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
   Widget _playerRow(Payment p, PaymentLedgerViewModel vm) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -118,7 +126,7 @@ class PaymentLedgerScreen extends StatelessWidget {
             radius: 20,
             backgroundColor: _navy,
             child: Text(
-              p.initials,
+              _initials(p.playerName),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -147,9 +155,10 @@ class PaymentLedgerScreen extends StatelessWidget {
             ),
           ),
           _StatusPill(
-            paid: p.paid,
-            onTap: () =>
-                p.paid ? vm.markAsUnpaid(p.id) : vm.markAsPaid(p.id),
+            paid: p.status == 'paid',
+            onTap: () => p.status == 'paid'
+                ? vm.markAsUnpaid(p.paymentId)
+                : vm.markAsPaid(p.paymentId),
           ),
         ],
       ),

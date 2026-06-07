@@ -1,12 +1,14 @@
 // features/venue/analytics/analytics_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+
+import 'package:provider/provider.dart';
+import 'package:courtcall/core/theme/app_colors.dart';
 import 'package:courtcall/repositories/analytics_repository.dart';
 import 'package:courtcall/repositories/firebase/firebase_analytics_repository.dart';
 import 'analytics_viewmodel.dart';
 
-class AnalyticsScreen extends StatefulWidget {
+class AnalyticsScreen extends StatelessWidget {
   final String venueId;
 
   const AnalyticsScreen({super.key, required this.venueId, this.repo});
@@ -14,33 +16,29 @@ class AnalyticsScreen extends StatefulWidget {
   final AnalyticsRepository? repo;
 
   @override
-  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => AnalyticsViewModel(
+        repo: repo ?? FirebaseAnalyticsRepository(),
+        venueId: venueId,
+      ),
+      child: _AnalyticsBody(venueId: venueId),
+    );
+  }
 }
 
-class _AnalyticsScreenState extends State<AnalyticsScreen> {
-  late final AnalyticsViewModel _viewModel;
+class _AnalyticsBody extends StatelessWidget {
+  final String venueId;
 
-  @override
-  void initState() {
-    super.initState();
-    _viewModel = AnalyticsViewModel(
-      repo: widget.repo ?? FirebaseAnalyticsRepository(),
-      venueId: widget.venueId,
-    );
-    _viewModel.addListener(() { if (mounted) setState(() {}); });
-  }
-
-  @override
-  void dispose() {
-    _viewModel.dispose();
-    super.dispose();
-  }
+  const _AnalyticsBody({required this.venueId});
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<AnalyticsViewModel>();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      body: _viewModel.isLoading
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: vm.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               child: LayoutBuilder(
@@ -49,21 +47,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   final pad = isWide ? 24.0 : 16.0;
                   return Column(
                     children: [
-                      _buildHeader(pad),
+                      _buildHeader(context, pad, vm),
                       Expanded(
                         child: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildHeroChart(pad),
+                              _buildHeroChart(pad, vm),
                               Padding(
                                 padding: EdgeInsets.all(pad),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildStatStrip(),
+                                    _buildStatStrip(vm),
                                     const SizedBox(height: 24),
-                                    _buildTopOrganizers(),
+                                    _buildTopOrganizers(vm),
                                     const SizedBox(height: 16),
                                   ],
                                 ),
@@ -80,21 +78,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildHeader(double pad) {
+  Widget _buildHeader(BuildContext context, double pad, AnalyticsViewModel vm) {
     return Padding(
       padding: EdgeInsets.fromLTRB(pad, 12, pad, 8),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A2E)),
-            onPressed: () => context.go('/venue/dashboard?venueId=${widget.venueId}'),
+            icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
+            onPressed: () => Navigator.pop(context),
           ),
-          const Expanded(
-            child: Text('Revenue Analytics',
+          Expanded(
+            child: const Text('Revenue Analytics',
                 style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E))),
+                    color: AppColors.onSurface)),
           ),
           const SizedBox(width: 48),
         ],
@@ -102,7 +100,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildHeroChart(double pad) {
+  Widget _buildHeroChart(double pad, AnalyticsViewModel vm) {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -116,38 +114,38 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildPeriodTabs(),
+          _buildPeriodTabs(vm),
           const SizedBox(height: 20),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(_viewModel.totalRevenue,
+              Text(vm.totalRevenue,
                   style: const TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
                       color: Colors.white)),
               const SizedBox(width: 12),
               _TrendBadge(
-                  label: _viewModel.trend,
-                  isPositive: _viewModel.isTrendPositive),
+                  label: vm.trend,
+                  isPositive: vm.isTrendPositive),
             ],
           ),
-          Text(_viewModel.periodLabel,
+          Text(vm.periodLabel,
               style: TextStyle(
                   fontSize: 12,
                   color: Colors.white.withValues(alpha: 0.55),
                   letterSpacing: 0.5)),
           const SizedBox(height: 24),
           _BarChart(
-            bars: _viewModel.bars,
-            dayLabels: _viewModel.dayLabels,
+            bars: vm.bars,
+            dayLabels: vm.dayLabels,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPeriodTabs() {
+  Widget _buildPeriodTabs(AnalyticsViewModel vm) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.1),
@@ -156,10 +154,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       padding: const EdgeInsets.all(3),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: _viewModel.periods.map((period) {
-          final isSelected = _viewModel.selectedPeriod == period['key'];
+        children: vm.periods.map((period) {
+          final isSelected = vm.selectedPeriod == period['key'];
           return GestureDetector(
-            onTap: () => _viewModel.selectPeriod(period['key']!),
+            onTap: () => vm.selectPeriod(period['key']!),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding:
@@ -182,10 +180,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildStatStrip() {
+  Widget _buildStatStrip(AnalyticsViewModel vm) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -198,25 +196,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         children: [
           _StatTile(
               label: 'SESSIONS',
-              value: '${_viewModel.sessions}',
-              color: const Color(0xFF1A1A2E),
+              value: '${vm.sessions}',
+              color: AppColors.onSurface,
               isLast: false),
           _StatTile(
               label: 'CANCELLED',
-              value: '${_viewModel.cancelled}',
-              color: const Color(0xFFD92B2B),
+              value: '${vm.cancelled}',
+              color: AppColors.error,
               isLast: false),
           _StatTile(
               label: 'NO-SHOW',
-              value: _viewModel.noShowRate,
-              color: const Color(0xFFFBB040),
+              value: vm.noShowRate,
+              color: AppColors.amber,
               isLast: true),
         ],
       ),
     );
   }
 
-  Widget _buildTopOrganizers() {
+  Widget _buildTopOrganizers(AnalyticsViewModel vm) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -224,9 +222,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E))),
+                color: AppColors.onSurface)),
         const SizedBox(height: 12),
-        ..._viewModel.topOrganizers.asMap().entries.map((entry) {
+        ...vm.topOrganizers.asMap().entries.map((entry) {
           final organizer =
               (entry.value as Map).cast<String, dynamic>();
           return _OrganizerTile(rank: entry.key + 1, organizer: organizer);
@@ -251,56 +249,93 @@ class _BarChart extends StatelessWidget {
 
     return SizedBox(
       height: 120,
-      child: Column(
+      child: Stack(
         children: [
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: bars.map((bar) {
-                final fraction = (bar['value'] as double) / maxValue;
-                final isHighlighted = bar['isHighlighted'] == true;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 600),
-                          curve: Curves.easeOut,
-                          height: 75 * fraction,
-                          decoration: BoxDecoration(
-                            color: isHighlighted
-                                ? const Color(0xFF00E676)
-                                : const Color(0xFF00E676).withValues(alpha: 0.45),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
+          CustomPaint(
+            size: const Size(double.infinity, 120),
+            painter: _GridPainter(),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: dayLabels
-                .map((d) => Expanded(
-                      child: Text('$d',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.55))),
-                    ))
-                .toList(),
+          Positioned(
+            top: 0,
+            right: 4,
+            child: Text('RM ${maxValue.toStringAsFixed(0)}',
+                style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.white.withValues(alpha: 0.35))),
+          ),
+          Column(
+            children: [
+              const SizedBox(height: 14),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: bars.map((bar) {
+                    final fraction = (bar['value'] as double) / maxValue;
+                    final isHighlighted = bar['isHighlighted'] == true;
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.easeOut,
+                              height: 75 * fraction,
+                              decoration: BoxDecoration(
+                                color: isHighlighted
+                                    ? const Color(0xFF00E676)
+                                    : const Color(0xFF00E676).withValues(alpha: 0.45),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: dayLabels
+                    .map((d) => Expanded(
+                          child: Text('$d',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.55))),
+                        ))
+                    .toList(),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
+
+class _GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0x15FFFFFF)
+      ..strokeWidth = 0.5;
+
+    final gridBottom = size.height - 24.0;
+    const gridHeight = 75.0;
+
+    for (final pct in [0.25, 0.50, 0.75]) {
+      final y = gridBottom - (gridHeight * pct);
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _TrendBadge extends StatelessWidget {
@@ -357,7 +392,7 @@ class _StatTile extends StatelessWidget {
           border: Border(
             right: isLast
                 ? BorderSide.none
-                : const BorderSide(color: Color(0xFFF3F4F6)),
+                : const BorderSide(color: AppColors.outline),
           ),
         ),
         child: Column(
@@ -372,7 +407,7 @@ class _StatTile extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF9CA3AF),
+                    color: AppColors.onSurfaceVariant,
                     letterSpacing: 0.5)),
           ],
         ),
@@ -388,9 +423,9 @@ class _OrganizerTile extends StatelessWidget {
   const _OrganizerTile({required this.rank, required this.organizer});
 
   Color get _rankColor {
-    if (rank == 1) return const Color(0xFFFBB040);
-    if (rank == 2) return const Color(0xFF9CA3AF);
-    return const Color(0xFFCD7F32);
+    if (rank == 1) return AppColors.rankGold;
+    if (rank == 2) return AppColors.rankSilver;
+    return AppColors.rankBronze;
   }
 
   @override
@@ -400,7 +435,7 @@ class _OrganizerTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -429,7 +464,7 @@ class _OrganizerTile extends StatelessWidget {
           const SizedBox(width: 12),
           CircleAvatar(
             radius: 18,
-            backgroundColor: const Color(0xFF1A1A2E),
+            backgroundColor: AppColors.darkNavy,
             child: Text(name[0].toUpperCase(),
                 style: const TextStyle(
                     color: Colors.white,
@@ -445,10 +480,10 @@ class _OrganizerTile extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A2E))),
+                        color: AppColors.onSurface)),
                 Text('${organizer['sessions']} sessions booked',
                     style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF9CA3AF))),
+                        fontSize: 12, color: AppColors.onSurfaceVariant)),
               ],
             ),
           ),
@@ -456,7 +491,7 @@ class _OrganizerTile extends StatelessWidget {
               style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D7A3E))),
+                  color: AppColors.secondary)),
         ],
       ),
     );

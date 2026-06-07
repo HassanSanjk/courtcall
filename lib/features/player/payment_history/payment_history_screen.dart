@@ -1,20 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../models/models.dart';
 import '../../../repositories/player_repository.dart';
 import '../../auth/auth_viewmodel.dart';
 import 'payment_history_viewmodel.dart';
 
-/// Payment History screen — shows all payments for the current player.
-///
-/// Features:
-///   - KPI cards: Total Outstanding / Total Paid
-///   - Filter tabs: All / Pending / Paid
-///   - Payment list with mark-as-paid action
 class PaymentHistoryScreen extends StatelessWidget {
-  PaymentHistoryScreen({super.key});
+  const PaymentHistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,11 +17,20 @@ class PaymentHistoryScreen extends StatelessWidget {
     final playerId = authVm.currentUser?.uid ?? 'player_001';
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Payments'),
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.of(context).maybePop(),
+          splashRadius: 20,
+        ),
+        title: const Text('My Payments'),
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: AppColors.outline),
+        ),
       ),
       body: ChangeNotifierProvider(
         create: (_) => PaymentHistoryViewModel(
@@ -40,282 +44,385 @@ class PaymentHistoryScreen extends StatelessWidget {
 }
 
 class _PaymentHistoryBody extends StatelessWidget {
-  _PaymentHistoryBody();
-
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<PaymentHistoryViewModel>();
 
     if (vm.isLoading) {
-      return Center(
-          child:
-              CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 600;
-        final pad = isWide ? 32.0 : 16.0;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Outstanding card
+          _OutstandingCard(
+            amount: 'RM ${vm.totalOutstanding.toStringAsFixed(0)}',
+          ),
+          const SizedBox(height: 16),
 
-        return Column(
-          children: [
-            // ── KPI cards ───────────────────────────────────────────
+          // Error banner
+          if (vm.errorMessage != null)
             Padding(
-              padding: EdgeInsets.fromLTRB(pad, 16.0, pad, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: KpiCard(
-                      label: 'Outstanding',
-                      value:
-                          'RM ${vm.totalOutstanding.toStringAsFixed(2)}',
-                      icon: Icons.pending_outlined,
-                      accentColor: vm.hasOutstanding
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.secondary,
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.redLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: AppColors.error, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        vm.errorMessage!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
-                  ),
-                  SizedBox(width: isWide ? 24.0 : 16.0),
-                  Expanded(
-                    child: KpiCard(
-                      label: 'Total Paid',
-                      value: 'RM ${vm.totalPaid.toStringAsFixed(2)}',
-                      icon: Icons.check_circle_outline,
-                      accentColor: Theme.of(context).colorScheme.secondary,
+                    GestureDetector(
+                      onTap: vm.clearError,
+                      child: const Icon(Icons.close,
+                          color: AppColors.error, size: 16),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            SizedBox(height: 16.0),
 
-        // ── Filter tabs ─────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 16.0),
-          child: Row(
-            children: PaymentFilter.values.map((filter) {
-              final isActive = vm.activeFilter == filter;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: GestureDetector(
-                  onTap: () => vm.setFilter(filter),
-                  child: AnimatedContainer(
-                    duration: Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 4.0,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.surface,
-                      borderRadius:
-                          BorderRadius.circular(100.0),
-                      border: Border.all(
-                        color: isActive
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                    ),
-                    child: Text(
-                      _filterLabel(filter),
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: isActive
-                            ? Theme.of(context).colorScheme.surface
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+          // Filter tabs
+          _FilterTabs(
+            selectedIndex: PaymentFilter.values.indexOf(vm.activeFilter),
+            onChanged: (i) => vm.setFilter(PaymentFilter.values[i]),
+          ),
+          const SizedBox(height: 16),
+
+          // Payment list
+          if (vm.filteredPayments.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(top: 40),
+                child: Text(
+                  'No payments here.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 15,
                   ),
                 ),
-              );
-            }).toList(),
-          ),
+              ),
+            )
+          else
+            ...vm.filteredPayments.map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _PaymentItem(
+                  payment: p,
+                  isMarkingPaid: vm.isMarkingPaid,
+                  onMarkPaid: () => vm.markPaid(p.paymentId),
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Outstanding Card ────────────────────────────────────────────────────────
+
+class _OutstandingCard extends StatelessWidget {
+  final String amount;
+
+  const _OutstandingCard({required this.amount});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(20),
+      borderColor: AppColors.orangeBorder,
+      borderWidth: 1.5,
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.orange.withValues(alpha: 0.08),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
         ),
-        SizedBox(height: 16.0),
-
-        // ── Error banner ────────────────────────────────────────────
-        if (vm.errorMessage != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 0,
-                16.0, 16.0),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(8.0),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12.0),
-                border: Border.all(color: Theme.of(context).colorScheme.error),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline,
-                      color: Theme.of(context).colorScheme.error, size: 16),
-                  SizedBox(width: 8.0),
-                  Expanded(
-                    child: Text(vm.errorMessage!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error)),
+      ],
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'OUTSTANDING',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.orange,
+                    letterSpacing: 1.2,
                   ),
-                  GestureDetector(
-                    onTap: vm.clearError,
-                    child: Icon(Icons.close,
-                        color: Theme.of(context).colorScheme.error, size: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  amount,
+                  style: const TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.orange,
+                    height: 1.0,
+                    letterSpacing: -1,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
+          ElevatedButton(
+            onPressed: () {
+              // Pay All — future enhancement
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.orange,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Pay Now',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-        // ── Payment list ────────────────────────────────────────────
-        Expanded(
-          child: vm.filteredPayments.isEmpty
-              ? Center(
-                  child: Text(
-                    'No payments here.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: pad),
-                  itemCount: vm.filteredPayments.length,
-                  itemBuilder: (context, index) {
-                    final payment = vm.filteredPayments[index];
-                    return _PaymentCard(
-                      payment: payment,
-                      isMarkingPaid: vm.isMarkingPaid,
-                      onMarkPaid: () =>
-                          vm.markPaid(payment.paymentId),
-                    );
-                  },
-                ),
+// ─── Filter Tabs ─────────────────────────────────────────────────────────────
+
+class _FilterTabs extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  const _FilterTabs({
+    required this.selectedIndex,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _FilterChip(
+          label: 'All',
+          index: 0,
+          selected: selectedIndex == 0,
+          onTap: onChanged,
+        ),
+        const SizedBox(width: 8),
+        _FilterChip(
+          label: 'Paid',
+          index: 1,
+          selected: selectedIndex == 1,
+          onTap: onChanged,
+        ),
+        const SizedBox(width: 8),
+        _FilterChip(
+          label: 'Pending',
+          index: 2,
+          selected: selectedIndex == 2,
+          onTap: onChanged,
+          hasDot: true,
         ),
       ],
     );
-      },
-    );
   }
-
-  String _filterLabel(PaymentFilter filter) => switch (filter) {
-        PaymentFilter.all     => 'All',
-        PaymentFilter.paid    => 'Paid',
-        PaymentFilter.pending => 'Pending',
-      };
 }
 
-// ── Payment card ──────────────────────────────────────────────────────────────
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final int index;
+  final bool selected;
+  final ValueChanged<int> onTap;
+  final bool hasDot;
 
-class _PaymentCard extends StatelessWidget {
-  _PaymentCard({
+  const _FilterChip({
+    required this.label,
+    required this.index,
+    required this.selected,
+    required this.onTap,
+    this.hasDot = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onTap(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.darkNavy : AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: selected ? AppColors.darkNavy : AppColors.outline,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : AppColors.textSecondary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (hasDot) ...[
+              const SizedBox(width: 6),
+              Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  color: AppColors.error,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Payment Item ────────────────────────────────────────────────────────────
+
+class _PaymentItem extends StatelessWidget {
+  final Payment payment;
+  final bool isMarkingPaid;
+  final VoidCallback onMarkPaid;
+
+  const _PaymentItem({
     required this.payment,
     required this.isMarkingPaid,
     required this.onMarkPaid,
   });
 
-  final Payment payment;
-  final bool isMarkingPaid;
-  final VoidCallback onMarkPaid;
+  bool get _isPending => payment.isUnpaid;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16.0),
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
+    return AppCard(
+      borderColor: _isPending ? AppColors.orangeBorder : AppColors.outline,
+      borderWidth: _isPending ? 1.5 : 1,
       child: Row(
         children: [
-          // Icon
           Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: payment.isPaid
-                  ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1)
-                  : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12.0),
+              color: _isPending ? AppColors.orangeLight : AppColors.greenLight,
+              shape: BoxShape.circle,
             ),
             child: Icon(
-              payment.isPaid
-                  ? Icons.check_circle_outline
-                  : Icons.pending_outlined,
-              color: payment.isPaid
-                  ? Theme.of(context).colorScheme.secondary
-                  : Theme.of(context).colorScheme.tertiary,
-              size: 22,
+              _isPending
+                  ? Icons.access_time_rounded
+                  : Icons.check_circle_outline_rounded,
+              color: _isPending ? AppColors.orange : AppColors.green,
+              size: 20,
             ),
           ),
-          SizedBox(width: 16.0),
-
-          // Details
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   payment.sessionName ?? 'Session',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.2,
+                  ),
                 ),
                 if (payment.sessionDate != null)
-                  Text(
-                    payment.sessionDate!,
-                    style: Theme.of(context).textTheme.bodySmall,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      payment.sessionDate!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                   ),
               ],
             ),
           ),
-
-          // Amount + status
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 'RM ${payment.amount.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: payment.isPaid
-                      ? Theme.of(context).colorScheme.onSurface
-                      : Theme.of(context).colorScheme.error,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: _isPending ? AppColors.error : AppColors.textPrimary,
+                  letterSpacing: -0.2,
                 ),
               ),
-              SizedBox(height: 4.0),
-              if (payment.isUnpaid)
-                GestureDetector(
-                  onTap: isMarkingPaid ? null : onMarkPaid,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8.0,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius:
-                          BorderRadius.circular(100.0),
-                    ),
-                    child: isMarkingPaid
-                        ? SizedBox(
-                            height: 12,
-                            width: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Theme.of(context).colorScheme.surface,
-                            ),
-                          )
-                        : Text(
-                            'Pay Now',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Theme.of(context).colorScheme.surface,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                  ),
-                )
-              else
-                StatusPill(
-                  label: 'Paid',
-                  status: PillStatus.paid,
-                ),
+              const SizedBox(height: 5),
+              _isPending
+                  ? GestureDetector(
+                      onTap: isMarkingPaid ? null : onMarkPaid,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.darkNavy,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: isMarkingPaid
+                            ? const SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Pay Now',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                    )
+                  : StatusBadge.paid(),
             ],
           ),
         ],

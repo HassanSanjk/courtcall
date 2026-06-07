@@ -1,14 +1,35 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:courtcall/repositories/mocks/mock_session_repository.dart';
+import 'package:courtcall/models/models.dart';
+import 'mocks/mock_session_repository.dart';
 import 'package:courtcall/features/organizer/cancellation/cancellation_viewmodel.dart';
 
 void main() {
   late MockSessionRepository repo;
   late CancellationViewModel vm;
+  final mockSession = Session(
+    sessionId: 'session_1',
+    organizerId: 'org_1',
+    venueId: 'v1',
+    venueName: 'Test Venue',
+    court: 'Court 1',
+    date: '2026-05-19',
+    dateTimestamp: DateTime(2026, 5, 19),
+    time: '8:00 PM–10:00 PM',
+    maxPlayers: 10,
+    rsvpCount: 5,
+    costPerPlayer: 15.0,
+    status: 'upcoming',
+    createdAt: DateTime(2026, 5, 10),
+    sport: 'Futsal',
+  );
 
   setUp(() {
     repo = MockSessionRepository();
-    vm = CancellationViewModel(repo: repo);
+    vm = CancellationViewModel(
+      sessionRepo: repo,
+      sessionId: 'session_1',
+      session: mockSession,
+    );
   });
 
   tearDown(() {
@@ -82,25 +103,25 @@ void main() {
     });
 
     test('isCancelling is false after confirmCancellation completes', () async {
-      await vm.confirmCancellation('session_1');
+      await vm.confirmCancellation();
       expect(vm.isCancelling, isFalse);
     });
 
     test('confirmCancellation removes session from repository', () async {
-      await vm.confirmCancellation('session_1');
+      await vm.confirmCancellation();
       final sessions = await repo.watchUpcomingSessions('org_1').first;
-      expect(sessions.any((s) => s.id == 'session_1'), isFalse);
+      expect(sessions.any((s) => s.sessionId == 'session_1'), isFalse);
     });
 
     test('errorMessage is null after successful cancellation', () async {
-      await vm.confirmCancellation('session_1');
+      await vm.confirmCancellation();
       expect(vm.errorMessage, isNull);
     });
 
     test('cancellation leaves other sessions intact', () async {
-      await vm.confirmCancellation('session_1');
+      await vm.confirmCancellation();
       final sessions = await repo.watchUpcomingSessions('org_1').first;
-      expect(sessions.any((s) => s.id == 'session_2'), isTrue);
+      expect(sessions.any((s) => s.sessionId == 'session_2'), isTrue);
     });
   });
 }

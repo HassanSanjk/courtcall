@@ -3,7 +3,13 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/kpi_card.dart';
 import '../../../core/widgets/session_card.dart';
-import '../../../models/session.dart';
+import '../../../models/models.dart';
+import '../../../repositories/session_repository.dart';
+import '../../../repositories/payment_repository.dart';
+import '../../../repositories/rsvp_repository.dart';
+import '../../../repositories/venue_repository.dart';
+import '../../auth/auth_viewmodel.dart';
+import '../../auth/login/login_screen.dart';
 import '../create_session/create_session_screen.dart';
 import '../create_session/create_session_viewmodel.dart';
 import '../rsvp_tracker/rsvp_tracker_screen.dart';
@@ -15,8 +21,13 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final organizerId = context.read<AuthViewModel>().playerId;
     return ChangeNotifierProvider(
-      create: (_) => DashboardViewModel(),
+      create: (_) => DashboardViewModel(
+        sessionRepo: context.read<SessionRepository>(),
+        paymentRepo: context.read<PaymentRepository>(),
+        organizerId: organizerId,
+      ),
       child: const _DashboardView(),
     );
   }
@@ -56,11 +67,16 @@ class _DashboardView extends StatelessWidget {
   }
 
   void _openCreateSession(BuildContext context) {
+    final organizerId = context.read<AuthViewModel>().playerId;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
-          create: (_) => CreateSessionViewModel(),
+          create: (_) => CreateSessionViewModel(
+            sessionRepo: context.read<SessionRepository>(),
+            venueRepo: context.read<VenueRepository>(),
+            organizerId: organizerId,
+          ),
           child: const CreateSessionScreen(),
         ),
       ),
@@ -98,6 +114,11 @@ class _Header extends StatelessWidget {
                 ],
               ),
             ),
+            IconButton(
+              icon: const Icon(Icons.logout, color: AppColors.textSecondary),
+              tooltip: 'Sign out',
+              onPressed: () => _confirmSignOut(context),
+            ),
             const CircleAvatar(
               radius: 22,
               backgroundColor: AppColors.primaryNavy,
@@ -112,6 +133,35 @@ class _Header extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmSignOut(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final nav = Navigator.of(context);
+              await context.read<AuthViewModel>().signOut();
+              if (!context.mounted) return;
+              nav.pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
+              );
+            },
+            child: const Text('Sign Out'),
+          ),
+        ],
       ),
     );
   }
@@ -207,11 +257,11 @@ class _SessionList extends StatelessWidget {
           (context, i) {
             final Session s = vm.sessions[i];
             return SessionCard(
-              title: '${s.sport} · ${s.courtName}',
+              title: '${s.sport} · ${s.court}',
               date: s.date,
-              time: s.startTime,
+              time: s.time,
               venue: s.venueName,
-              playerCount: s.confirmedCount,
+              playerCount: s.rsvpCount,
               maxPlayers: s.maxPlayers,
               status: s.status,
               onTap: () => _openRsvpTracker(context, s),
@@ -229,9 +279,15 @@ class _SessionList extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => RsvpTrackerViewModel()),
+            ChangeNotifierProvider(
+              create: (_) => RsvpTrackerViewModel(
+                rsvpRepo: context.read<RsvpRepository>(),
+                paymentRepo: context.read<PaymentRepository>(),
+                session: s,
+              ),
+            ),
           ],
-          child: const RsvpTrackerScreen(),
+          child: RsvpTrackerScreen(session: s),
         ),
       ),
     );

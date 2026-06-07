@@ -1,8 +1,8 @@
 // features/venue/availability/availability_viewmodel.dart
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../repositories/availability_repository.dart';
-import '../../../repositories/mocks/mock_availability_repository.dart';
 
 class AvailabilityViewModel extends ChangeNotifier {
   final AvailabilityRepository _repo;
@@ -14,11 +14,12 @@ class AvailabilityViewModel extends ChangeNotifier {
   bool hasChanges = false;
   int selectedCourtIndex = 0;
   String _weekStart = _todayWeekStart();
+  StreamSubscription? _sub;
 
   final List<String> courts = ['Court 1', 'Court 2', 'Court 3', 'VIP Court'];
 
-  AvailabilityViewModel({AvailabilityRepository? repo, required String venueId})
-      : _repo = repo ?? MockAvailabilityRepository(),
+  AvailabilityViewModel({required AvailabilityRepository repo, required String venueId})
+      : _repo = repo,
         _venueId = venueId {
     _init();
   }
@@ -49,10 +50,18 @@ class AvailabilityViewModel extends ChangeNotifier {
     return grouped.values.toList();
   }
 
-  String get weekRangeLabel => _weekStart; // formatted by UI if needed
+  String get weekRangeLabel {
+    final start = DateTime.parse(_weekStart);
+    final end = start.add(const Duration(days: 6));
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return '${days[start.weekday - 1]}, ${start.day} ${months[start.month - 1]} – '
+        '${days[end.weekday - 1]}, ${end.day} ${months[end.month - 1]}';
+  }
 
   void _init() {
-    _repo.watchSlots(_venueId, _weekStart).listen((list) {
+    _sub?.cancel();
+    _sub = _repo.watchSlots(_venueId, _weekStart).listen((list) {
       _slots = list.cast<Map<String, dynamic>>();
       isLoading = false;
       notifyListeners();
@@ -102,5 +111,11 @@ class AvailabilityViewModel extends ChangeNotifier {
     isSaving = false;
     hasChanges = false;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }

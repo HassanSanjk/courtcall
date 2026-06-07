@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../../models/models.dart';
 import '../../../repositories/session_repository.dart';
-import '../../../repositories/mocks/mock_session_repository.dart';
+import '../../../repositories/venue_repository.dart';
 
 class CreateSessionViewModel extends ChangeNotifier {
   final SessionRepository _repo;
+  final VenueRepository _venueRepo;
+  final String organizerId;
 
   String selectedSport = 'Futsal';
   int maxPlayers = 12;
@@ -11,10 +15,32 @@ class CreateSessionViewModel extends ChangeNotifier {
   TimeOfDay? startTime;
   TimeOfDay? endTime;
   bool isSaving = false;
+  bool isLoadingVenues = false;
   String? errorMessage;
+  List<Venue> venues = [];
+  Venue? selectedVenue;
 
-  CreateSessionViewModel({SessionRepository? repo})
-      : _repo = repo ?? MockSessionRepository();
+  CreateSessionViewModel({
+    required SessionRepository sessionRepo,
+    required VenueRepository venueRepo,
+    required this.organizerId,
+  })  : _repo = sessionRepo,
+        _venueRepo = venueRepo {
+    _loadVenues();
+  }
+
+  Future<void> _loadVenues() async {
+    isLoadingVenues = true;
+    notifyListeners();
+    try {
+      venues = await _venueRepo.getAllVenues();
+    } catch (_) {
+      venues = [];
+    } finally {
+      isLoadingVenues = false;
+      notifyListeners();
+    }
+  }
 
   void setSport(String sport) {
     selectedSport = sport;
@@ -41,13 +67,17 @@ class CreateSessionViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setVenue(Venue venue) {
+    selectedVenue = venue;
+    notifyListeners();
+  }
+
   Future<bool> createSession({
-    required String venue,
     required String cost,
     required String notes,
   }) async {
-    if (venue.trim().isEmpty || selectedDate == null || startTime == null || endTime == null) {
-      errorMessage = 'Please fill in Venue, Date, Start Time, and End Time.';
+    if (selectedVenue == null || selectedDate == null || startTime == null || endTime == null) {
+      errorMessage = 'Please select a Venue, Date, Start Time, and End Time.';
       notifyListeners();
       return false;
     }
@@ -57,19 +87,21 @@ class CreateSessionViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final dateStr = DateFormat('EEEE, d MMMM').format(selectedDate!);
+      final timeStr = '${_formatTime(startTime!)}–${_formatTime(endTime!)}';
       await _repo.createSession({
         'sport': selectedSport,
-        'venueName': venue.trim(),
-        'courtName': '',
-        'date': _formatDate(selectedDate!),
-        'startTime': _formatTime(startTime!),
-        'endTime': _formatTime(endTime!),
+        'organizerId': organizerId,
+        'venueId': selectedVenue!.venueId,
+        'venueName': selectedVenue!.name,
+        'court': '',
+        'date': dateStr,
+        'dateTimestamp': selectedDate!,
+        'time': timeStr,
         'maxPlayers': maxPlayers,
-        'confirmedCount': 0,
+        'rsvpCount': 0,
         'costPerPlayer': double.tryParse(cost.trim()) ?? 0.0,
-        'courtCost': 0.0,
         'status': 'upcoming',
-        'organizerId': 'org_1',
       });
       return true;
     } catch (e) {
@@ -80,9 +112,6 @@ class CreateSessionViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  String _formatDate(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   String _formatTime(TimeOfDay t) {
     final h = t.hour % 12 == 0 ? 12 : t.hour % 12;

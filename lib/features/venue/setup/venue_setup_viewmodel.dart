@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../repositories/venue_repository.dart';
+import '../../../core/services/cloudinary_service.dart';
 
 class VenueSetupState {
   final String venueName;
@@ -10,6 +13,8 @@ class VenueSetupState {
   final int endHour;
   final bool isLoading;
   final bool isSaving;
+  final bool isUploadingImage;
+  final File? venueImage;
   final String? errorMessage;
   final String? successVenueId;
 
@@ -22,6 +27,8 @@ class VenueSetupState {
     this.endHour = 22,
     this.isLoading = false,
     this.isSaving = false,
+    this.isUploadingImage = false,
+    this.venueImage,
     this.errorMessage,
     this.successVenueId,
   });
@@ -35,6 +42,8 @@ class VenueSetupState {
     int? endHour,
     bool? isLoading,
     bool? isSaving,
+    bool? isUploadingImage,
+    File? venueImage,
     String? errorMessage,
     String? successVenueId,
   }) {
@@ -47,6 +56,8 @@ class VenueSetupState {
       endHour: endHour ?? this.endHour,
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
+      isUploadingImage: isUploadingImage ?? this.isUploadingImage,
+      venueImage: venueImage ?? this.venueImage,
       errorMessage: errorMessage ?? this.errorMessage,
       successVenueId: successVenueId ?? this.successVenueId,
     );
@@ -65,7 +76,22 @@ class VenueSetupViewModel extends ChangeNotifier {
 
   VenueSetupState get state => _state;
 
+  final _picker = ImagePicker();
+  final _cloudinary = CloudinaryService();
+
   VenueSetupViewModel({required VenueRepository repo}) : _repo = repo;
+
+  Future<void> pickImage() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1080,
+    );
+    if (picked != null) {
+      _state = _state.copyWith(venueImage: File(picked.path));
+      notifyListeners();
+    }
+  }
 
   Future<void> checkExistingVenue(String ownerId) async {
     _state = _state.copyWith(isLoading: true);
@@ -139,6 +165,24 @@ class VenueSetupViewModel extends ChangeNotifier {
         'address': _state.address.trim(),
         'courts': _state.courtNames.map((n) => n.trim()).toList(),
       });
+
+      // Upload image after venue created
+      if (_state.venueImage != null) {
+        _state = _state.copyWith(isUploadingImage: true);
+        notifyListeners();
+
+        final imageUrl = await _cloudinary.uploadVenueImage(
+          _state.venueImage!,
+          venueId,
+        );
+
+        if (imageUrl != null) {
+          await _repo.updateVenueImage(venueId, imageUrl);
+        }
+
+        _state = _state.copyWith(isUploadingImage: false);
+        notifyListeners();
+      }
 
       await _repo.generateSlots(
         venueId,

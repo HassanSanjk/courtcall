@@ -1,419 +1,566 @@
 // lib/seed_firestore.dart
 //
-// HOW TO USE:
-// 1. Add seed button in dev_menu.dart (already done)
-// 2. Run the app, tap 'Seed Firestore' once
-// 3. Check Firebase Console — all collections will be there
-// 4. Remove the button when done
+// Seeds Firestore with demo data AND creates real Firebase Auth accounts.
+// Each account uses a simple Gmail address with password "12345678".
 //
-// IMPORTANT — UIDs:
-// Replace kVenueOwnerUid and kOrganizerUid with real UIDs from
-// Firebase Console → Authentication → Users after creating accounts.
+// Usage:
+//   1. Run the app
+//   2. Tap "Seed Firestore" on the dev menu
+//   3. Wait for the success dialog
+//   4. Sign out, then sign in with any seeded account
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-// ── Placeholder UIDs (replace after creating real Auth accounts) ─────────────
-const String kVenueOwnerUid = 'venue_owner_uid_replace_me';
-const String kOrganizerUid  = 'organizer_uid_replace_me';
-const String kPlayerUid     = 'player_uid_replace_me';
+// ── Account definitions ───────────────────────────────────────────────────────
+
+class _Account {
+  final String email;
+  final String password;
+  final String name;
+  final String role;
+  String? uid;
+
+  _Account({
+    required this.email,
+    required this.password,
+    required this.name,
+    required this.role,
+  });
+}
+
+final List<_Account> _venueOwners = [
+  _Account(email: 'venue1@gmail.com', password: '12345678', name: 'En. Hafiz', role: 'venue_owner'),
+  _Account(email: 'venue2@gmail.com', password: '12345678', name: 'Puan Siti', role: 'venue_owner'),
+];
+
+final List<_Account> _organizers = [
+  _Account(email: 'organizer1@gmail.com', password: '12345678', name: 'Azri', role: 'organizer'),
+  _Account(email: 'organizer2@gmail.com', password: '12345678', name: 'Syafiq', role: 'organizer'),
+];
+
+final List<_Account> _players = [
+  _Account(email: 'player1@gmail.com', password: '12345678', name: 'Hussein', role: 'player'),
+  _Account(email: 'player2@gmail.com', password: '12345678', name: 'Hafiz', role: 'player'),
+  _Account(email: 'player3@gmail.com', password: '12345678', name: 'Danial', role: 'player'),
+  _Account(email: 'player4@gmail.com', password: '12345678', name: 'Faris', role: 'player'),
+  _Account(email: 'player5@gmail.com', password: '12345678', name: 'Imran', role: 'player'),
+  _Account(email: 'player6@gmail.com', password: '12345678', name: 'Kamal', role: 'player'),
+  _Account(email: 'player7@gmail.com', password: '12345678', name: 'Zikri', role: 'player'),
+  _Account(email: 'player8@gmail.com', password: '12345678', name: 'Ali', role: 'player'),
+  _Account(email: 'player9@gmail.com', password: '12345678', name: 'Mei Ling', role: 'player'),
+  _Account(email: 'player10@gmail.com', password: '12345678', name: 'Priya', role: 'player'),
+];
+
+List<_Account> get _allAccounts => [..._venueOwners, ..._organizers, ..._players];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+String _formatDate(DateTime dt) {
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${days[dt.weekday - 1]}, ${dt.day} ${months[dt.month - 1]}';
+}
+
+Timestamp _ts(DateTime dt) => Timestamp.fromDate(dt);
+
+// ── Account creation ─────────────────────────────────────────────────────────
+
+Future<void> _createAccounts() async {
+  final auth = FirebaseAuth.instance;
+
+  for (final acct in _allAccounts) {
+    try {
+      await auth.signOut();
+      final cred = await auth.createUserWithEmailAndPassword(
+        email: acct.email,
+        password: acct.password,
+      );
+      acct.uid = cred.user!.uid;
+      await auth.signOut();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        await auth.signOut();
+        final cred = await auth.signInWithEmailAndPassword(
+          email: acct.email,
+          password: acct.password,
+        );
+        acct.uid = cred.user!.uid;
+        await auth.signOut();
+      } else {
+        rethrow;
+      }
+    }
+  }
+}
 
 // ── Entry point ──────────────────────────────────────────────────────────────
+
 Future<void> seedFirestore(BuildContext context) async {
-  final db = FirebaseFirestore.instance;
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const _SeedProgressDialog(),
+  );
+}
 
-  try {
-    await _seedUsers(db);
-    await _seedVenues(db);
-    await _seedSlots(db);
-    await _seedSessions(db);
-    await _seedRsvps(db);
-    await _seedPayments(db);
-    await _seedCancellations(db);
-    await _seedWaitlist(db);
+// ── Progress dialog ──────────────────────────────────────────────────────────
 
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Firestore seeded successfully!'),
-          backgroundColor: Color(0xFF0D7A3E),
-        ),
-      );
+class _SeedProgressDialog extends StatefulWidget {
+  const _SeedProgressDialog();
+  @override
+  State<_SeedProgressDialog> createState() => _SeedProgressDialogState();
+}
+
+class _SeedProgressDialogState extends State<_SeedProgressDialog> {
+  String _message = 'Initialising...';
+  bool _done = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _seed());
+  }
+
+  Future<void> _seed() async {
+    final db = FirebaseFirestore.instance;
+
+    try {
+      // ── Step 1: Auth accounts ──────────────────────────────────────────
+      await _update('Creating Firebase Auth accounts (14)...');
+      await _createAccounts();
+
+      final uidByEmail = <String, String>{};
+      for (final acct in _allAccounts) {
+        uidByEmail[acct.email] = acct.uid!;
+      }
+
+      // ── Step 2: User docs ──────────────────────────────────────────────
+      await _update('Writing user profiles...');
+      final usersCol = db.collection('users');
+      for (final acct in _allAccounts) {
+        await usersCol.doc(acct.uid).set({
+          'uid': acct.uid,
+          'name': acct.name,
+          'email': acct.email,
+          'role': acct.role,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // ── Step 3: Venues ─────────────────────────────────────────────────
+      await _update('Creating 8 venues across KL...');
+      final venuesCol = db.collection('venues');
+
+      const venues = [
+        {'id': 'venue_1', 'name': 'Nexus Futsal Cheras', 'address': '12 Jalan Tun Perak, Cheras, KL', 'lat': 3.1390, 'lng': 101.6869, 'courts': ['Court 1', 'Court 2', 'Court 3'], 'owner': 'venue1@gmail.com', 'imageUrl': ''},
+        {'id': 'venue_2', 'name': 'Arena Futsal KLCC', 'address': '45 Jalan Ampang, KLCC, KL', 'lat': 3.1450, 'lng': 101.6950, 'courts': ['Court 1', 'Court 2'], 'owner': 'venue1@gmail.com', 'imageUrl': ''},
+        {'id': 'venue_3', 'name': 'Pro Futsal Bukit Bintang', 'address': '78 Jalan Bukit Bintang, KL', 'lat': 3.1320, 'lng': 101.6800, 'courts': ['Court 1', 'Court 2'], 'owner': 'venue2@gmail.com', 'imageUrl': ''},
+        {'id': 'venue_4', 'name': 'City Sports Hub Bangsar', 'address': '23 Jalan Bangsar, KL', 'lat': 3.1500, 'lng': 101.7000, 'courts': ['Court 1', 'Court 2', 'Court 3', 'Court 4'], 'owner': 'venue2@gmail.com', 'imageUrl': ''},
+        {'id': 'venue_5', 'name': 'Westside Arena PJ', 'address': '56 Jalan SS2, Petaling Jaya', 'lat': 3.1180, 'lng': 101.6350, 'courts': ['Court 1', 'Court 2', 'Court 3'], 'owner': 'venue1@gmail.com', 'imageUrl': ''},
+        {'id': 'venue_6', 'name': 'Northpark Courts Mont Kiara', 'address': '90 Jalan Kiara, Mont Kiara, KL', 'lat': 3.1620, 'lng': 101.6470, 'courts': ['Court 1', 'Court 2'], 'owner': 'venue2@gmail.com', 'imageUrl': ''},
+        {'id': 'venue_7', 'name': 'SportsRally Arena PJ', 'address': '34 Jalan 52, Petaling Jaya', 'lat': 3.1080, 'lng': 101.6420, 'courts': ['Court 1', 'Court 2'], 'owner': 'venue1@gmail.com', 'imageUrl': ''},
+        {'id': 'venue_8', 'name': 'Mega Court KL Sentral', 'address': '5 Jalan Stesen, KL Sentral', 'lat': 3.1340, 'lng': 101.6850, 'courts': ['Court 1', 'Court 2', 'Court 3'], 'owner': 'venue2@gmail.com', 'imageUrl': ''},
+      ];
+
+      for (final v in venues) {
+        await venuesCol.doc(v['id'] as String).set({
+          'venueId': v['id'],
+          'name': v['name'],
+          'address': v['address'],
+          'lat': v['lat'],
+          'lng': v['lng'],
+          'ownerId': uidByEmail[v['owner'] as String],
+          'ownerName': _allAccounts.firstWhere((a) => a.email == v['owner']).name,
+          'courts': v['courts'],
+          'imageUrl': v['imageUrl'],
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      final venueNames = {
+        for (final v in venues) v['id'] as String: v['name'] as String,
+      };
+
+      // ── Step 4: Sessions ───────────────────────────────────────────────
+      await _update('Creating 25 sessions...');
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      final timeSlots = [
+        ('6:00 PM – 8:00 PM', 18),
+        ('7:00 PM – 9:00 PM', 19),
+        ('8:00 PM – 10:00 PM', 20),
+        ('9:00 PM – 11:00 PM', 21),
+        ('10:00 AM – 12:00 PM', 10),
+        ('2:00 PM – 4:00 PM', 14),
+      ];
+
+      int tIdx(String label) => timeSlots.indexWhere((t) => t.$1 == label);
+
+      final sessionDefs = [
+        // Upcoming sessions (next 30 days)
+        {'vid': 'venue_1', 'court': 'Court 1', 'sport': 'Futsal', 'price': 25.0, 'max': 12, 'day': 3, 'time': '8:00 PM – 10:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_1', 'court': 'Court 2', 'sport': 'Badminton', 'price': 18.0, 'max': 8, 'day': 5, 'time': '6:00 PM – 8:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_1', 'court': 'Court 3', 'sport': 'Futsal', 'price': 20.0, 'max': 10, 'day': 8, 'time': '9:00 PM – 11:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_2', 'court': 'Court 1', 'sport': 'Futsal', 'price': 30.0, 'max': 10, 'day': 2, 'time': '7:00 PM – 9:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_2', 'court': 'Court 2', 'sport': 'Futsal', 'price': 28.0, 'max': 8, 'day': 6, 'time': '8:00 PM – 10:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_3', 'court': 'Court 1', 'sport': 'Basketball', 'price': 35.0, 'max': 10, 'day': 4, 'time': '7:00 PM – 9:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_3', 'court': 'Court 2', 'sport': 'Futsal', 'price': 22.0, 'max': 12, 'day': 10, 'time': '6:00 PM – 8:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_4', 'court': 'Court 1', 'sport': 'Tennis', 'price': 40.0, 'max': 4, 'day': 7, 'time': '10:00 AM – 12:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_4', 'court': 'Court 2', 'sport': 'Badminton', 'price': 15.0, 'max': 8, 'day': 9, 'time': '2:00 PM – 4:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_4', 'court': 'Court 3', 'sport': 'Futsal', 'price': 25.0, 'max': 12, 'day': 12, 'time': '8:00 PM – 10:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_5', 'court': 'Court 1', 'sport': 'Pickleball', 'price': 20.0, 'max': 6, 'day': 11, 'time': '7:00 PM – 9:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_5', 'court': 'Court 2', 'sport': 'Badminton', 'price': 16.0, 'max': 8, 'day': 14, 'time': '6:00 PM – 8:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_5', 'court': 'Court 3', 'sport': 'Futsal', 'price': 22.0, 'max': 10, 'day': 16, 'time': '9:00 PM – 11:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_6', 'court': 'Court 1', 'sport': 'Tennis', 'price': 38.0, 'max': 4, 'day': 15, 'time': '10:00 AM – 12:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_6', 'court': 'Court 2', 'sport': 'Pickleball', 'price': 18.0, 'max': 6, 'day': 18, 'time': '2:00 PM – 4:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_7', 'court': 'Court 1', 'sport': 'Badminton', 'price': 15.0, 'max': 8, 'day': 20, 'time': '7:00 PM – 9:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_7', 'court': 'Court 2', 'sport': 'Futsal', 'price': 24.0, 'max': 12, 'day': 22, 'time': '8:00 PM – 10:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_8', 'court': 'Court 1', 'sport': 'Basketball', 'price': 32.0, 'max': 10, 'day': 25, 'time': '6:00 PM – 8:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_8', 'court': 'Court 2', 'sport': 'Futsal', 'price': 20.0, 'max': 10, 'day': 28, 'time': '9:00 PM – 11:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_8', 'court': 'Court 3', 'sport': 'Pickleball', 'price': 18.0, 'max': 6, 'day': 30, 'time': '7:00 PM – 9:00 PM', 'org': 'organizer1@gmail.com'},
+        // Completed sessions (past 14 days)
+        {'vid': 'venue_1', 'court': 'Court 1', 'sport': 'Futsal', 'price': 25.0, 'max': 12, 'day': -3, 'time': '8:00 PM – 10:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_3', 'court': 'Court 2', 'sport': 'Futsal', 'price': 22.0, 'max': 10, 'day': -5, 'time': '7:00 PM – 9:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_4', 'court': 'Court 1', 'sport': 'Badminton', 'price': 15.0, 'max': 8, 'day': -8, 'time': '6:00 PM – 8:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_5', 'court': 'Court 1', 'sport': 'Pickleball', 'price': 20.0, 'max': 6, 'day': -10, 'time': '2:00 PM – 4:00 PM', 'org': 'organizer2@gmail.com'},
+        {'vid': 'venue_2', 'court': 'Court 1', 'sport': 'Futsal', 'price': 30.0, 'max': 10, 'day': -12, 'time': '8:00 PM – 10:00 PM', 'org': 'organizer1@gmail.com'},
+        // Cancelled sessions
+        {'vid': 'venue_1', 'court': 'Court 2', 'sport': 'Badminton', 'price': 18.0, 'max': 8, 'day': -2, 'time': '6:00 PM – 8:00 PM', 'org': 'organizer1@gmail.com'},
+        {'vid': 'venue_4', 'court': 'Court 4', 'sport': 'Futsal', 'price': 25.0, 'max': 12, 'day': -6, 'time': '9:00 PM – 11:00 PM', 'org': 'organizer2@gmail.com'},
+      ];
+
+      final sessionsCol = db.collection('sessions');
+      int sessionNum = 0;
+
+      for (int i = 0; i < sessionDefs.length; i++) {
+        final s = sessionDefs[i];
+        sessionNum++;
+        final dayOffset = s['day'] as int;
+        final timeLabel = s['time'] as String;
+                final ti = tIdx(timeLabel);
+        final startHour = timeSlots[ti].$2;
+        final date = today.add(Duration(days: dayOffset, hours: startHour));
+
+        final isCancelled = i >= sessionDefs.length - 2;
+        final isCompleted = i >= sessionDefs.length - 7 && i < sessionDefs.length - 2;
+        final status = isCancelled ? 'cancelled' : (isCompleted ? 'completed' : 'upcoming');
+        final rsvpCount = isCancelled ? 0 : (isCompleted ? (s['max'] as int) ~/ 2 : (s['max'] as int) * 3 ~/ 4);
+
+        await sessionsCol.doc('session_$sessionNum').set({
+          'sessionId': 'session_$sessionNum',
+          'organizerId': uidByEmail[s['org'] as String],
+          'venueId': s['vid'],
+          'venueName': venueNames[s['vid']]!,
+          'court': s['court'],
+          'date': _formatDate(date),
+          'dateTimestamp': _ts(date),
+          'time': timeLabel,
+          'maxPlayers': s['max'],
+          'rsvpCount': rsvpCount,
+          'costPerPlayer': s['price'],
+          'status': status,
+          'createdAt': _ts(today.subtract(Duration(days: 30 - (dayOffset < 0 ? 0 : dayOffset)))),
+          'sport': s['sport'],
+        });
+      }
+
+      // ── Step 5: RSVPs ──────────────────────────────────────────────────
+      await _update('Creating RSVPs...');
+      final rsvpsCol = db.collection('rsvps');
+      int rsvpNum = 0;
+      final rsvpCountBySession = <int, int>{};
+
+      for (int sessionIdx = 0; sessionIdx < sessionDefs.length; sessionIdx++) {
+        final s = sessionDefs[sessionIdx];
+        final sessionNumId = sessionIdx + 1;
+        final isCancelled = sessionIdx >= sessionDefs.length - 2;
+        final maxPlayers = s['max'] as int;
+        // Assign 3 to 10 players per session
+        final numPlayers = maxPlayers > 8 ? (maxPlayers * 3 ~/ 4).clamp(3, 10) : maxPlayers.clamp(2, 8);
+
+        for (int p = 0; p < numPlayers && p < _players.length; p++) {
+          rsvpNum++;
+          final player = _players[p];
+          final isConfirmed = p < (numPlayers * 0.7).round();
+          final status = isCancelled ? 'declined' : (isConfirmed ? 'confirmed' : (p % 3 == 0 ? 'pending' : 'declined'));
+
+          await rsvpsCol.doc('rsvp_$rsvpNum').set({
+            'rsvpId': 'rsvp_$rsvpNum',
+            'sessionId': 'session_$sessionNumId',
+            'playerId': player.uid,
+            'playerName': player.name,
+            'status': status,
+            'declineReason': status == 'declined' ? 'self' : null,
+            'respondedAt': status != 'pending' ? _ts(today.subtract(const Duration(hours: 2))) : null,
+          });
+
+          if (status == 'confirmed') {
+            rsvpCountBySession[sessionNumId] = (rsvpCountBySession[sessionNumId] ?? 0) + 1;
+          }
+        }
+      }
+
+      // Update rsvpCount on sessions (more accurate than hardcoded values)
+      for (final entry in rsvpCountBySession.entries) {
+        await sessionsCol.doc('session_${entry.key}').update({
+          'rsvpCount': entry.value,
+        });
+      }
+
+      // ── Step 6: Payments ───────────────────────────────────────────────
+      await _update('Creating payments...');
+      final paymentsCol = db.collection('payments');
+      int payNum = 0;
+
+      for (int sessionIdx = 0; sessionIdx < sessionDefs.length; sessionIdx++) {
+        final s = sessionDefs[sessionIdx];
+        final sessionNumId = sessionIdx + 1;
+        final maxPlayers = s['max'] as int;
+        final numPlayers = maxPlayers > 8 ? (maxPlayers * 3 ~/ 4).clamp(3, 10) : maxPlayers.clamp(2, 8);
+
+        for (int p = 0; p < numPlayers && p < _players.length; p++) {
+          final player = _players[p];
+          final isCancelled = sessionIdx >= sessionDefs.length - 2;
+          final isPaid = !isCancelled && p % 3 != 0; // 2/3 paid
+
+          payNum++;
+          final payId = 'payment_$payNum';
+
+          await paymentsCol.doc(payId).set({
+            'paymentId': payId,
+            'sessionId': 'session_$sessionNumId',
+            'playerId': player.uid,
+            'playerName': player.name,
+            'amount': s['price'],
+            'status': isPaid ? 'paid' : 'unpaid',
+            'sessionName': '${s['sport']} at ${venueNames[s['vid']]}',
+            'sessionDate': '${today.day}/${today.month}/${today.year}',
+            'transactionRef': isPaid ? 'FPX-${today.year}${today.month.toString().padLeft(2, '0')}${today.day.toString().padLeft(2, '0')}-$payNum' : null,
+            'paidAt': isPaid ? _ts(today.subtract(const Duration(hours: 4))) : null,
+          });
+        }
+      }
+
+      // ── Step 7: Slots ──────────────────────────────────────────────────
+      await _update('Creating availability slots...');
+      final slotsCol = db.collection('slots');
+
+      for (final v in venues) {
+        final vid = v['id'] as String;
+        final courts = v['courts'] as List;
+
+        for (int dayOff = 0; dayOff < 14; dayOff++) {
+          final slotDate = today.add(Duration(days: dayOff));
+          final dateLabel = _formatDate(slotDate);
+
+          for (int ci = 0; ci < courts.length; ci++) {
+            for (int h = 18; h <= 22; h++) {
+              final slotId = '${vid}_c${ci}_d${dayOff}_h$h';
+              final isBooked = dayOff == 3 && ci == 0 && (h == 20 || h == 21);
+              final isMaintenance = dayOff == 5 && ci == 1 && h == 19;
+
+              await slotsCol.doc(slotId).set({
+                'slotId': slotId,
+                'venueId': vid,
+                'courtIndex': ci,
+                'date': dateLabel,
+                'dateTimestamp': _ts(DateTime(slotDate.year, slotDate.month, slotDate.day, h)),
+                'timeLabel': '${h > 12 ? h - 12 : h}:00 ${h >= 12 ? "PM" : "AM"}',
+                'status': isBooked ? 'booked' : (isMaintenance ? 'maintenance' : 'available'),
+                'isEnabled': !isBooked && !isMaintenance,
+                'sessionId': isBooked ? 'session_1' : null,
+              });
+            }
+          }
+        }
+      }
+
+      // ── Step 8: Cancellations ──────────────────────────────────────────
+      await _update('Creating cancellation records...');
+      final cancelsCol = db.collection('cancellations');
+
+      await cancelsCol.doc('cancellation_1').set({
+        'cancellationId': 'cancellation_1',
+        'venueId': 'venue_1',
+        'sessionId': 'session_26',
+        'organizerId': uidByEmail['organizer1@gmail.com'],
+        'organizerName': 'Azri',
+        'court': 'Court 2',
+        'timeRange': '6:00 PM – 8:00 PM',
+        'dateLabel': _formatDate(today.subtract(const Duration(days: 2))),
+        'dateTimestamp': _ts(today.subtract(const Duration(days: 2, hours: 18))),
+        'lostRevenue': 144.0,
+        'depositCollected': 30.0,
+        'noticeHours': 2,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      await cancelsCol.doc('cancellation_2').set({
+        'cancellationId': 'cancellation_2',
+        'venueId': 'venue_4',
+        'sessionId': 'session_27',
+        'organizerId': uidByEmail['organizer2@gmail.com'],
+        'organizerName': 'Syafiq',
+        'court': 'Court 4',
+        'timeRange': '9:00 PM – 11:00 PM',
+        'dateLabel': _formatDate(today.subtract(const Duration(days: 6))),
+        'dateTimestamp': _ts(today.subtract(const Duration(days: 6, hours: 21))),
+        'lostRevenue': 300.0,
+        'depositCollected': 50.0,
+        'noticeHours': 5,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // ── Step 9: Analytics ──────────────────────────────────────────────
+      await _update('Creating analytics data...');
+      final analyticsCol = db.collection('analytics');
+
+      for (final v in venues) {
+        final vid = v['id'] as String;
+        final venueName = v['name'] as String;
+
+        await analyticsCol.doc('${vid}_thisWeek').set({
+          'venueId': vid,
+          'venueName': venueName,
+          'period': 'thisWeek',
+          'totalRevenue': 'RM ${4000 + (venues.indexOf(v) * 250)}',
+          'trend': '+${8 + (venues.indexOf(v) % 5)}%',
+          'isTrendPositive': true,
+          'periodLabel': 'This Week',
+          'bars': [1200, 900, 1500, 800, 1100, 600, 400],
+          'dayLabels': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          'sessions': 35 + (venues.indexOf(v) * 2),
+          'cancelled': 2 + (venues.indexOf(v) % 3),
+          'noShowRate': '${4 + (venues.indexOf(v) % 4)}%',
+          'topOrganizers': [
+            {'name': 'Azri', 'sessions': 12 + venues.indexOf(v)},
+            {'name': 'Syafiq', 'sessions': 8 + venues.indexOf(v)},
+          ],
+        });
+
+        await analyticsCol.doc('${vid}_thisMonth').set({
+          'venueId': vid,
+          'venueName': venueName,
+          'period': 'thisMonth',
+          'totalRevenue': 'RM ${12000 + (venues.indexOf(v) * 800)}',
+          'trend': '+${6 + (venues.indexOf(v) % 6)}%',
+          'isTrendPositive': true,
+          'periodLabel': 'This Month',
+          'bars': [4000, 3800, 4200, 3500],
+          'dayLabels': ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+          'sessions': 140 + (venues.indexOf(v) * 8),
+          'cancelled': 8 + (venues.indexOf(v) % 4),
+          'noShowRate': '${5 + (venues.indexOf(v) % 3)}%',
+          'topOrganizers': [
+            {'name': 'Azri', 'sessions': 45 + venues.indexOf(v)},
+            {'name': 'Syafiq', 'sessions': 32 + venues.indexOf(v)},
+          ],
+        });
+
+        await analyticsCol.doc('${vid}_allTime').set({
+          'venueId': vid,
+          'venueName': venueName,
+          'period': 'allTime',
+          'totalRevenue': 'RM ${80000 + (venues.indexOf(v) * 5000)}',
+          'trend': '+${18 + (venues.indexOf(v) % 10)}%',
+          'isTrendPositive': true,
+          'periodLabel': 'All Time',
+          'bars': [18000, 22000, 20000, 25000],
+          'dayLabels': ['Q1', 'Q2', 'Q3', 'Q4'],
+          'sessions': 980 + (venues.indexOf(v) * 60),
+          'cancelled': 62 + (venues.indexOf(v) * 3),
+          'noShowRate': '${6 + (venues.indexOf(v) % 3)}%',
+          'topOrganizers': [
+            {'name': 'Azri', 'sessions': 320 + venues.indexOf(v) * 5},
+            {'name': 'Syafiq', 'sessions': 210 + venues.indexOf(v) * 4},
+          ],
+        });
+      }
+
+      // ── Done ───────────────────────────────────────────────────────────
+      if (!mounted) return;
+      setState(() {
+        _done = true;
+        _message = 'Database seeded successfully!';
+        // seeding done
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _done = true;
+      });
     }
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Seed failed: $e'),
-          backgroundColor: const Color(0xFFD92B2B),
-        ),
-      );
-    }
   }
-}
 
-// ── users ────────────────────────────────────────────────────────────────────
-Future<void> _seedUsers(FirebaseFirestore db) async {
-  final col = db.collection('users');
-
-  await col.doc(kVenueOwnerUid).set({
-    'uid': kVenueOwnerUid,
-    'name': 'En. Hafiz',
-    'email': 'hafiz@nexusfutsal.com',
-    'role': 'venue_owner',
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-
-  await col.doc(kOrganizerUid).set({
-    'uid': kOrganizerUid,
-    'name': 'Azri',
-    'email': 'azri@courtcall.com',
-    'role': 'organizer',
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-
-  await col.doc(kPlayerUid).set({
-    'uid': kPlayerUid,
-    'name': 'Syafiq',
-    'email': 'syafiq@courtcall.com',
-    'role': 'player',
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-}
-
-// ── venues ───────────────────────────────────────────────────────────────────
-Future<void> _seedVenues(FirebaseFirestore db) async {
-  final col = db.collection('venues');
-
-  await col.doc('venue_1').set({
-    'venueId': 'venue_1',
-    'ownerId': kVenueOwnerUid,
-    'name': 'Nexus Futsal',
-    'address': 'Jalan Ampang, Kuala Lumpur',
-    'lat': 3.1390,
-    'lng': 101.6869,
-    'courts': ['Court 1', 'Court 2', 'Court 3'],
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-
-  await col.doc('venue_2').set({
-    'venueId': 'venue_2',
-    'ownerId': kVenueOwnerUid,
-    'name': 'Arena Futsal',
-    'address': 'Jalan Bukit Bintang, Kuala Lumpur',
-    'lat': 3.1450,
-    'lng': 101.6950,
-    'courts': ['Court 1', 'Court 2'],
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-}
-
-// ── slots ────────────────────────────────────────────────────────────────────
-Future<void> _seedSlots(FirebaseFirestore db) async {
-  final col = db.collection('slots');
-
-  // Helper — converts a date string to Timestamp for querying
-  Timestamp toTs(int year, int month, int day, int hour) =>
-      Timestamp.fromDate(DateTime(year, month, day, hour));
-
-  final slots = [
-    {
-      'slotId': 'slot_1',
-      'venueId': 'venue_1',
-      'courtIndex': 0,
-      'date': 'Friday, 9 May',
-      'dateTimestamp': toTs(2026, 5, 9, 18),
-      'timeLabel': '6:00 PM',
-      'status': 'available',
-      'isEnabled': true,
-      'sessionId': null,
-    },
-    {
-      'slotId': 'slot_2',
-      'venueId': 'venue_1',
-      'courtIndex': 0,
-      'date': 'Friday, 9 May',
-      'dateTimestamp': toTs(2026, 5, 9, 19),
-      'timeLabel': '7:00 PM',
-      'status': 'available',
-      'isEnabled': true,
-      'sessionId': null,
-    },
-    {
-      'slotId': 'slot_3',
-      'venueId': 'venue_1',
-      'courtIndex': 0,
-      'date': 'Friday, 9 May',
-      'dateTimestamp': toTs(2026, 5, 9, 20),
-      'timeLabel': '8:00 PM',
-      'status': 'booked',
-      'isEnabled': false,
-      'sessionId': 'session_1',
-    },
-    {
-      'slotId': 'slot_4',
-      'venueId': 'venue_1',
-      'courtIndex': 0,
-      'date': 'Friday, 9 May',
-      'dateTimestamp': toTs(2026, 5, 9, 21),
-      'timeLabel': '9:00 PM',
-      'status': 'maintenance',
-      'isEnabled': false,
-      'sessionId': null,
-    },
-    {
-      'slotId': 'slot_5',
-      'venueId': 'venue_1',
-      'courtIndex': 0,
-      'date': 'Friday, 9 May',
-      'dateTimestamp': toTs(2026, 5, 9, 22),
-      'timeLabel': '10:00 PM',
-      'status': 'available',
-      'isEnabled': false,       // available but toggled off by venue owner
-      'sessionId': null,
-    },
-    {
-      'slotId': 'slot_6',
-      'venueId': 'venue_1',
-      'courtIndex': 1,
-      'date': 'Friday, 9 May',
-      'dateTimestamp': toTs(2026, 5, 9, 18),
-      'timeLabel': '6:00 PM',
-      'status': 'booked',
-      'isEnabled': false,
-      'sessionId': 'session_2',
-    },
-    {
-      'slotId': 'slot_7',
-      'venueId': 'venue_1',
-      'courtIndex': 1,
-      'date': 'Friday, 9 May',
-      'dateTimestamp': toTs(2026, 5, 9, 20),
-      'timeLabel': '8:00 PM',
-      'status': 'blocked',
-      'isEnabled': false,
-      'sessionId': null,
-    },
-    {
-      'slotId': 'slot_8',
-      'venueId': 'venue_1',
-      'courtIndex': 2,
-      'date': 'Friday, 9 May',
-      'dateTimestamp': toTs(2026, 5, 9, 18),
-      'timeLabel': '6:00 PM',
-      'status': 'available',
-      'isEnabled': true,
-      'sessionId': null,
-    },
-  ];
-
-  for (final slot in slots) {
-    await col.doc(slot['slotId'] as String).set(slot);
+  Future<void> _update(String msg) async {
+    if (!mounted) return;
+    setState(() => _message = msg);
+    await Future.delayed(const Duration(milliseconds: 200));
   }
-}
 
-// ── sessions ─────────────────────────────────────────────────────────────────
-Future<void> _seedSessions(FirebaseFirestore db) async {
-  final col = db.collection('sessions');
-
-  await col.doc('session_1').set({
-    'sessionId': 'session_1',
-    'organizerId': kOrganizerUid,
-    'venueId': 'venue_1',
-    'venueName': 'Nexus Futsal',
-    'court': 'Court 1',
-    'date': 'Friday, 9 May',
-    'dateTimestamp': Timestamp.fromDate(DateTime(2026, 5, 9, 20)),
-    'time': '8:00 PM – 10:00 PM',
-    'maxPlayers': 12,
-    'rsvpCount': 3,             // matches confirmed rsvps seeded below
-    'costPerPlayer': 25.0,
-    'status': 'upcoming',
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-
-  await col.doc('session_2').set({
-    'sessionId': 'session_2',
-    'organizerId': kOrganizerUid,
-    'venueId': 'venue_1',
-    'venueName': 'Nexus Futsal',
-    'court': 'Court 2',
-    'date': 'Sunday, 11 May',
-    'dateTimestamp': Timestamp.fromDate(DateTime(2026, 5, 11, 19)),
-    'time': '7:00 PM – 9:00 PM',
-    'maxPlayers': 10,
-    'rsvpCount': 1,             // matches confirmed rsvps seeded below
-    'costPerPlayer': 20.0,
-    'status': 'upcoming',
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-}
-
-// ── rsvps ────────────────────────────────────────────────────────────────────
-Future<void> _seedRsvps(FirebaseFirestore db) async {
-  final col = db.collection('rsvps');
-
-  final rsvps = [
-    // session_1 — 3 confirmed, 1 pending, 1 declined (self)
-    {
-      'rsvpId': 'rsvp_1',
-      'sessionId': 'session_1',
-      'playerId': kOrganizerUid,
-      'playerName': 'Azri',
-      'status': 'confirmed',
-      'declineReason': null,
-    },
-    {
-      'rsvpId': 'rsvp_2',
-      'sessionId': 'session_1',
-      'playerId': kPlayerUid,
-      'playerName': 'Syafiq',
-      'status': 'confirmed',
-      'declineReason': null,
-    },
-    {
-      'rsvpId': 'rsvp_3',
-      'sessionId': 'session_1',
-      'playerId': 'player_3',
-      'playerName': 'Danial',
-      'status': 'confirmed',
-      'declineReason': null,
-    },
-    {
-      'rsvpId': 'rsvp_4',
-      'sessionId': 'session_1',
-      'playerId': 'player_4',
-      'playerName': 'Hafiz',
-      'status': 'pending',
-      'declineReason': null,
-    },
-    {
-      'rsvpId': 'rsvp_5',
-      'sessionId': 'session_1',
-      'playerId': 'player_5',
-      'playerName': 'Ridhwan',
-      'status': 'declined',
-      'declineReason': 'self',  // self-decline → waitlist promotion triggered
-    },
-
-    // session_2 — 1 confirmed
-    {
-      'rsvpId': 'rsvp_6',
-      'sessionId': 'session_2',
-      'playerId': kOrganizerUid,
-      'playerName': 'Azri',
-      'status': 'confirmed',
-      'declineReason': null,
-    },
-  ];
-
-  for (final rsvp in rsvps) {
-    await col.doc(rsvp['rsvpId'] as String).set(rsvp);
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_done ? (_error == null ? 'Seed Complete' : 'Seed Failed') : 'Seeding Database'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: _error != null
+            ? SingleChildScrollView(child: Text('❌ $_error', style: const TextStyle(color: Color(0xFFD92B2B))))
+            : _done
+                ? _buildResult()
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Text(_message),
+                      const SizedBox(height: 8),
+                      const Text('Do not close this dialog.',
+                          style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                    ],
+                  ),
+      ),
+      actions: [
+        if (_done)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+      ],
+    );
   }
-}
 
-// ── payments ─────────────────────────────────────────────────────────────────
-Future<void> _seedPayments(FirebaseFirestore db) async {
-  final col = db.collection('payments');
-
-  final payments = [
-    {
-      'paymentId': 'payment_1',
-      'sessionId': 'session_1',
-      'playerId': kOrganizerUid,
-      'playerName': 'Azri',
-      'amount': 25.0,
-      'status': 'paid',
-      'transactionRef': 'FPX-20260509-001',
-      'paidAt': FieldValue.serverTimestamp(),
-    },
-    {
-      'paymentId': 'payment_2',
-      'sessionId': 'session_1',
-      'playerId': kPlayerUid,
-      'playerName': 'Syafiq',
-      'amount': 25.0,
-      'status': 'unpaid',
-      'transactionRef': null,
-      'paidAt': null,
-    },
-    {
-      'paymentId': 'payment_3',
-      'sessionId': 'session_1',
-      'playerId': 'player_3',
-      'playerName': 'Danial',
-      'amount': 25.0,
-      'status': 'paid',
-      'transactionRef': 'FPX-20260509-002',
-      'paidAt': FieldValue.serverTimestamp(),
-    },
-    {
-      'paymentId': 'payment_4',
-      'sessionId': 'session_1',
-      'playerId': 'player_4',
-      'playerName': 'Hafiz',
-      'amount': 25.0,
-      'status': 'unpaid',
-      'transactionRef': null,
-      'paidAt': null,
-    },
-  ];
-
-  for (final payment in payments) {
-    await col.doc(payment['paymentId'] as String).set(payment);
-  }
-}
-
-// ── cancellations ─────────────────────────────────────────────────────────────
-Future<void> _seedCancellations(FirebaseFirestore db) async {
-  final col = db.collection('cancellations');
-
-  await col.doc('cancellation_1').set({
-    'cancellationId': 'cancellation_1',
-    'venueId': 'venue_1',
-    'sessionId': 'session_1',
-    'organizerId': kOrganizerUid,
-    'organizerName': 'Azri',
-    'court': 'Court 1',
-    'timeRange': '8:00 PM – 10:00 PM',
-    'dateLabel': '9 May 2026, Friday',
-    'dateTimestamp': Timestamp.fromDate(DateTime(2026, 5, 9, 20)),
-    'lostRevenue': 120.0,
-    'depositCollected': 50.0,
-    'noticeHours': 2,
-    'createdAt': FieldValue.serverTimestamp(),
-  });
-}
-
-// ── waitlist ──────────────────────────────────────────────────────────────────
-Future<void> _seedWaitlist(FirebaseFirestore db) async {
-  final col = db.collection('waitlist');
-
-  // Two players waiting for session_1
-  // In production, position is assigned via Firestore transaction.
-  // Seeding with hardcoded positions for dev only.
-  final entries = [
-    {
-      'waitlistId': 'waitlist_1',
-      'sessionId': 'session_1',
-      'playerId': 'player_6',
-      'playerName': 'Faiz',
-      'position': 1,
-      'joinedAt': FieldValue.serverTimestamp(),
-      'status': 'waiting',
-    },
-    {
-      'waitlistId': 'waitlist_2',
-      'sessionId': 'session_1',
-      'playerId': 'player_7',
-      'playerName': 'Izzat',
-      'position': 2,
-      'joinedAt': FieldValue.serverTimestamp(),
-      'status': 'waiting',
-    },
-  ];
-
-  for (final entry in entries) {
-    await col.doc(entry['waitlistId'] as String).set(entry);
+  Widget _buildResult() {
+    return SizedBox(
+      width: double.maxFinite,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('All data seeded!', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D7A3E))),
+          const SizedBox(height: 12),
+          const Text('Sign out, then sign in with any account below:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+          const SizedBox(height: 4),
+          const Text('Password: 12345678',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1A1A2E))),
+          const SizedBox(height: 12),
+          const Text('Venue Owners', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF0D7A3E))),
+          ..._venueOwners.map((a) => Text('  ${a.email} — ${a.name}', style: const TextStyle(fontSize: 12))),
+          const SizedBox(height: 8),
+          const Text('Organizers', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF0D7A3E))),
+          ..._organizers.map((a) => Text('  ${a.email} — ${a.name}', style: const TextStyle(fontSize: 12))),
+          const SizedBox(height: 8),
+          const Text('Players', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF0D7A3E))),
+          ..._players.map((a) => Text('  ${a.email} — ${a.name}', style: const TextStyle(fontSize: 12))),
+        ],
+      ),
+    );
   }
 }

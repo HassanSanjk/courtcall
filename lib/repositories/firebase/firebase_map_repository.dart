@@ -32,11 +32,14 @@ class FirebaseMapRepository implements MapRepository {
           'id': sessionData['sessionId'] ?? sessionDoc.id,
           'name': venueData['name'] ?? '',
           'court': sessionData['court'] ?? '',
+          'sport': sessionData['sport'] ?? '',
           'lat': venueData['lat'] ?? lat,
           'lng': venueData['lng'] ?? lng,
           'price': sessionData['costPerPlayer'] ?? 0,
           'time': sessionData['time'] ?? '',
           'date': sessionData['date'] ?? '',
+          'venueId': venueData['venueId'] ?? venueDoc.id,
+          'imageUrl': venueData['imageUrl'] ?? '',
         });
       }
     }

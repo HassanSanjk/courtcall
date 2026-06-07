@@ -1,21 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:courtcall/features/venue/analytics/analytics_screen.dart';
 import 'package:courtcall/repositories/analytics_repository.dart';
 
 class MockAnalyticsRepository extends Mock implements AnalyticsRepository {}
 
-Widget Function(Widget) testAppBuilder = (Widget child) => MaterialApp.router(
-  routerConfig: GoRouter(
-    initialLocation: '/',
-    routes: [
-      GoRoute(path: '/', builder: (context, state) => child),
-    ],
-  ),
-);
+Widget Function(Widget) testAppBuilder = (Widget child) => MaterialApp(home: child);
 
 void main() {
   testWidgets('shows loading then renders analytics', (tester) async {

@@ -1,6 +1,6 @@
 // repositories/mocks/mock_cancellation_repository.dart
 
-import '../cancellation_repository.dart';
+import 'package:courtcall/repositories/cancellation_repository.dart';
 
 class MockCancellationRepository implements CancellationRepository {
   static final Map<String, dynamic> _alert = {

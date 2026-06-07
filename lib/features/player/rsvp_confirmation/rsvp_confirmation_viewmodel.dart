@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../models/models.dart';
 import '../../../repositories/player_repository.dart';
+import '../../../repositories/venue_repository.dart';
 
 /// ViewModel for [RsvpConfirmationScreen].
 ///
@@ -13,10 +14,12 @@ import '../../../repositories/player_repository.dart';
 class RsvpConfirmationViewModel extends ChangeNotifier {
   RsvpConfirmationViewModel({
     required PlayerRepository repository,
+    required VenueRepository venueRepository,
     required Session session,
     required String playerId,
     required String playerName,
   })  : _repo = repository,
+        _venueRepo = venueRepository,
         _session = session,
         _playerId = playerId,
         _playerName = playerName {
@@ -24,11 +27,15 @@ class RsvpConfirmationViewModel extends ChangeNotifier {
   }
 
   final PlayerRepository _repo;
-  Session _session;
+  final VenueRepository _venueRepo;
+  final Session _session;
   final String _playerId;
   final String _playerName;
 
   Session get session => _session;
+
+  String? _venueImageUrl;
+  String? get venueImageUrl => _venueImageUrl;
 
   List<Rsvp> _confirmedRsvps = [];
 
@@ -79,9 +86,18 @@ class RsvpConfirmationViewModel extends ChangeNotifier {
   void _init() {
     _isLoading = true;
     _loadCurrentRsvp();
+    _loadVenueImage();
     _rsvpsSub = _repo
         .watchSessionRsvps(_session.sessionId)
         .listen(_onRsvpsUpdate, onError: _onError);
+  }
+
+  Future<void> _loadVenueImage() async {
+    try {
+      final venue = await _venueRepo.getVenueById(_session.venueId);
+      _venueImageUrl = venue?['imageUrl'] as String?;
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> _loadCurrentRsvp() async {

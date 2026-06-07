@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../../repositories/payment_repository.dart';
-import '../../../repositories/mocks/mock_payment_repository.dart';
-import '../../../models/payment.dart';
+import '../../../models/models.dart';
 
 class PaymentLedgerViewModel extends ChangeNotifier {
   final PaymentRepository _repo;
@@ -13,9 +12,9 @@ class PaymentLedgerViewModel extends ChangeNotifier {
   static const double courtCost = 120.0;
 
   PaymentLedgerViewModel({
-    PaymentRepository? repo,
-    this.sessionId = 'session_1',
-  }) : _repo = repo ?? MockPaymentRepository() {
+    required PaymentRepository paymentRepo,
+    required this.sessionId,
+  }) : _repo = paymentRepo {
     _repo.watchPaymentsForSession(sessionId).listen((list) {
       _payments = list;
       loading = false;
@@ -27,7 +26,7 @@ class PaymentLedgerViewModel extends ChangeNotifier {
   int get playerCount => _payments.length;
 
   double get totalCollected =>
-      _payments.fold(0.0, (sum, p) => p.paid ? sum + p.amount : sum);
+      _payments.fold(0.0, (sum, p) => p.status == 'paid' ? sum + p.amount : sum);
 
   double get totalOwed =>
       _payments.fold(0.0, (sum, p) => sum + p.amount);
@@ -43,6 +42,5 @@ class PaymentLedgerViewModel extends ChangeNotifier {
   }
 
   void exportSummary() {
-    // Placeholder — implement export/share in Firebase phase
   }
 }

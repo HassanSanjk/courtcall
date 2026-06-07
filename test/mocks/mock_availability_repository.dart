@@ -1,6 +1,6 @@
 // repositories/mocks/mock_availability_repository.dart
 
-import '../availability_repository.dart';
+import 'package:courtcall/repositories/availability_repository.dart';
 
 class MockAvailabilityRepository implements AvailabilityRepository {
   static final List<Map<String, dynamic>> _slots = [
@@ -117,10 +117,7 @@ class MockAvailabilityRepository implements AvailabilityRepository {
   @override
   Stream<List<dynamic>> watchSlots(String venueId, String weekStart) =>
       Stream.value(
-        _slots
-            .where((s) =>
-                s['venueId'] == venueId && s['weekStart'] == weekStart)
-            .toList(),
+        _slots.where((s) => s['venueId'] == venueId).toList(),
       );
 
   @override

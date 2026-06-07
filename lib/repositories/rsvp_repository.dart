@@ -1,5 +1,6 @@
-// TODO: replace dynamic with Rsvp model once defined by Hassan.
+import '../models/models.dart';
+
 abstract class RsvpRepository {
-  Stream<List<dynamic>> watchRsvpsForSession(String sessionId);
-  Future<void> updateRsvpStatus(String rsvpId, String status);
+  Stream<List<Rsvp>> watchRsvpsForSession(String sessionId);
+  Future<void> updateRsvpStatus(String rsvpId, String status, {String? declineReason});
 }

@@ -22,6 +22,13 @@ class FirebaseSessionRepository implements SessionRepository {
   }
 
   @override
+  Future<Session?> getSession(String sessionId) async {
+    final doc = await _db.collection('sessions').doc(sessionId).get();
+    if (!doc.exists) return null;
+    return Session.fromMap(doc.id, doc.data()!);
+  }
+
+  @override
   Future<String> createSession(Map<String, dynamic> data) async {
     final ref = _db.collection('sessions').doc();
     final id = ref.id;
@@ -56,6 +63,13 @@ class FirebaseSessionRepository implements SessionRepository {
   Future<void> cancelSession(String sessionId) async {
     await _db.collection('sessions').doc(sessionId).update({
       'status': 'cancelled',
+    });
+  }
+
+  @override
+  Future<void> incrementRsvpCount(String sessionId) async {
+    await _db.collection('sessions').doc(sessionId).update({
+      'rsvpCount': FieldValue.increment(1),
     });
   }
 }

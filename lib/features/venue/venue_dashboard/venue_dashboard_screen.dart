@@ -1,12 +1,15 @@
-// features/venue/venue_dashboard/venue_dashboard_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../../core/theme/app_colors.dart';
 import 'venue_dashboard_viewmodel.dart';
 import '../../../repositories/venue_dashboard_repository.dart';
 import '../../../repositories/venue_repository.dart';
 import '../../auth/auth_viewmodel.dart';
+import '../../auth/login/login_screen.dart';
+import '../../maps/map_screen.dart';
+import '../setup/venue_setup_screen.dart';
+import '../availability/availability_screen.dart';
+import '../cancellation_alert/cancellation_alert_screen.dart';
 
 class VenueDashboardScreen extends StatefulWidget {
   final String? venueId;
@@ -20,8 +23,6 @@ class VenueDashboardScreen extends StatefulWidget {
 }
 
 class _VenueDashboardScreenState extends State<VenueDashboardScreen> {
-  VenueDashboardViewModel? _viewModel;
-  late VenueDashboardState _state;
   bool _loadingVenue = true;
   String _venueId = '';
 
@@ -34,344 +35,389 @@ class _VenueDashboardScreenState extends State<VenueDashboardScreen> {
   Future<void> _resolveVenue() async {
     final venueId = widget.venueId;
     if (venueId != null) {
-      _initDashboard(venueId);
+      _venueId = venueId;
+      if (mounted) setState(() => _loadingVenue = false);
       return;
     }
 
     final user = context.read<AuthViewModel>().currentUser;
     if (user == null) {
-      context.go('/login');
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
       return;
     }
 
     final repo = context.read<VenueRepository>();
     final venue = await repo.getVenueByOwnerId(user.uid);
     if (venue == null) {
-      if (mounted) context.go('/venue/setup');
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const VenueSetupScreen()),
+        );
+      }
       return;
     }
 
-    _initDashboard(venue['venueId'] as String);
-  }
-
-  void _initDashboard(String venueId) {
-    _venueId = venueId;
-    _viewModel = VenueDashboardViewModel(
-      repo: widget.repo,
-      venueId: venueId,
-    );
-    _viewModel!.addListener(() {
-      if (mounted) setState(() {});
-    });
-    _loadingVenue = false;
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _viewModel?.dispose();
-    super.dispose();
+    _venueId = venue['venueId'] as String;
+    if (mounted) setState(() => _loadingVenue = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingVenue || _viewModel == null) {
+    if (_loadingVenue) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    _state = _viewModel!.state;
+
+    return ChangeNotifierProvider(
+      create: (_) => VenueDashboardViewModel(
+        repo: widget.repo,
+        venueId: _venueId,
+      ),
+      child: _DashboardBody(venueId: _venueId),
+    );
+  }
+}
+
+class _DashboardBody extends StatelessWidget {
+  final String venueId;
+
+  const _DashboardBody({required this.venueId});
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<VenueDashboardViewModel>();
+    final state = vm.state;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      body: _state.isLoading
+      backgroundColor: AppColors.background,
+      body: state.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               child: Column(
                 children: [
-                  _buildHeader(),
+                  _buildHeader(context, state, venueId),
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final isWide = constraints.maxWidth > 420;
                         final pad = isWide ? 24.0 : 16.0;
-                        return SingleChildScrollView(
-                          padding: EdgeInsets.symmetric(horizontal: pad),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(height: isWide ? 20 : 16),
-                              _buildStatCards(),
-                              SizedBox(height: isWide ? 28 : 24),
-                              _buildCourtGrid(),
-                              SizedBox(height: isWide ? 28 : 24),
-                              _buildUpcomingBookings(),
-                              SizedBox(height: 16),
-                            ],
+                        return RefreshIndicator(
+                          onRefresh: () => vm.refresh(),
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.symmetric(horizontal: pad),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+              SizedBox(height: isWide ? 20 : 16),
+                              _buildVenuePhoto(state),
+                              SizedBox(height: isWide ? 16 : 12),
+                              _buildStatCards(state),
+                                SizedBox(height: isWide ? 28 : 24),
+                                _buildCourtGrid(context, state, venueId),
+                                SizedBox(height: isWide ? 28 : 24),
+                                _buildUpcomingBookings(state),
+                                SizedBox(height: 16),
+                              ],
+                            ),
                           ),
                         );
                       },
                     ),
                   ),
-                  _buildBottomNav(),
                 ],
               ),
             ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 420;
-        final pad = isWide ? 24.0 : 16.0;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(pad, 16, pad, 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _state.venueName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  Text(
-                    _state.greeting,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Stack(
-                    children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications_outlined,
-                        color: Color(0xFF1A1A2E)),
-                    onPressed: () => context.go('/venue/cancellation-alert?venueId=$_venueId'),
-                  ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                              color: Colors.orange, shape: BoxShape.circle),
-                        ),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.settings_outlined,
-                        color: Color(0xFF1A1A2E)),
-                    onPressed: () => context.go('/venue/setup'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStatCards() {
-    return Row(
-      children: [
-        Expanded(child: _StatCard(
-          label: "TODAY'S BOOKINGS",
-          value: '${_state.todayBookings}',
-          icon: Icons.calendar_today_outlined,
-          bgColor: const Color(0xFF1A1A2E),
-        )),
-        const SizedBox(width: 12),
-        Expanded(child: _StatCard(
-          label: 'EXPECTED REV',
-          value: _state.expectedRevenue,
-          icon: Icons.trending_up,
-          bgColor: const Color(0xFF0D7A3E),
-        )),
-      ],
-    );
-  }
-
-  Widget _buildCourtGrid() {
-    final schedule = _state.schedule;
-    final courtNames = _state.courtNames;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Court Availability · Today',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E))),
-            GestureDetector(
-              onTap: () => context.go('/venue/availability?venueId=$_venueId'),
-              child: const Text('MANAGE',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D7A3E))),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2))
-            ],
-          ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Court headers
-                Row(
-                  children: [
-                    const SizedBox(width: 52),
-                    ...courtNames.map((name) => SizedBox(
-                          width: 90,
-                          child: Center(
-                            child: Text('$name',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF6B7280))),
-                          ),
-                        )),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Time rows
-                ...schedule.map((row) {
-                  final slots = row['slots'] as List<dynamic>;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 52,
-                          child: Text('${row['timeLabel']}',
-                              style: const TextStyle(
-                                  fontSize: 12, color: Color(0xFF6B7280))),
-                        ),
-                        ...slots.map((slot) => Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: _SlotCell(slot: slot.cast<String, dynamic>()),
-                            )),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUpcomingBookings() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Upcoming Bookings',
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E))),
-        const SizedBox(height: 12),
-        ..._state.upcomingBookings.map((booking) =>
-            _BookingTile(booking: (booking as Map).cast<String, dynamic>())),
-      ],
-    );
-  }
-
-  Widget _buildBottomNav() {
-    final items = [
-      (Icons.home_outlined, 'Home', 0),
-      (Icons.bar_chart_outlined, 'Sessions', 1),
-      (Icons.explore_outlined, 'Explore', 2),
-      (Icons.person_outline, 'Profile', 3),
-    ];
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, -2))
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: items.map((item) {
-              final isSelected = _state.selectedNavIndex == item.$3;
-              return GestureDetector(
-                onTap: () {
-                  switch (item.$3) {
-                    case 0: break;
-                      case 1: context.go('/venue/availability?venueId=$_venueId'); break;
-                      case 2: context.go('/maps'); break;
-                    case 3:
-                      context.read<AuthViewModel>().signOut();
-                      context.go('/login');
-                      break;
-                  }
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(item.$1,
-                        color: isSelected
-                            ? const Color(0xFF0D7A3E)
-                            : const Color(0xFF9CA3AF)),
-                    const SizedBox(height: 4),
-                    Text(item.$2,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                            color: isSelected
-                                ? const Color(0xFF0D7A3E)
-                                : const Color(0xFF9CA3AF))),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ),
+      bottomNavigationBar: _buildBottomNav(context, state, venueId),
     );
   }
 }
 
-// ─── Widgets ───────────────────────────────────────────────────────────────────
+Widget _buildHeader(BuildContext context, VenueDashboardState state, String venueId) {
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              state.venueName,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurface,
+              ),
+            ),
+            Text(
+              state.greeting,
+              style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            Stack(
+              children: [
+                IconButton(
+              icon: const Icon(Icons.notifications_outlined, color: AppColors.onSurface),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CancellationAlertScreen(venueId: venueId),
+                ),
+              ),
+            ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                        color: Colors.orange, shape: BoxShape.circle),
+                  ),
+                ),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings_outlined, color: AppColors.onSurface),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VenueSetupScreen()),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildVenuePhoto(VenueDashboardState state) {
+    final imageUrl = state.venueImageUrl;
+    if (imageUrl == null) return const SizedBox.shrink();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Image.network(
+        imageUrl,
+        width: double.infinity,
+        height: 160,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return Container(
+            height: 160,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5E7EB),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        },
+        errorBuilder: (_, _, _) => Image.asset(
+          'assets/images/venue_placeholder.png',
+          height: 160,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCards(VenueDashboardState state) {
+  return Row(
+    children: [
+      Expanded(child: _StatCard(
+        label: "TODAY'S BOOKINGS",
+        value: '${state.todayBookings}',
+        icon: Icons.calendar_today_outlined,
+        bgColor: AppColors.primary,
+      )),
+      const SizedBox(width: 12),
+      Expanded(child: _StatCard(
+        label: 'EXPECTED REV',
+        value: state.expectedRevenue,
+        icon: Icons.trending_up,
+        bgColor: AppColors.secondary,
+      )),
+    ],
+  );
+}
+
+Widget _buildCourtGrid(BuildContext context, VenueDashboardState state, String venueId) {
+  final schedule = state.schedule;
+  final courtNames = state.courtNames;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Court Availability · Today',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurface)),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AvailabilityScreen(venueId: venueId),
+              ),
+            ),
+            child: const Text('MANAGE',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.secondary)),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const SizedBox(width: 52),
+                  ...courtNames.map((name) => SizedBox(
+                        width: 90,
+                        child: Center(
+                          child: Text('$name',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onSurfaceVariant)),
+                        ),
+                      )),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...schedule.map((row) {
+                final slots = row['slots'] as List<dynamic>;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 52,
+                        child: Text('${row['timeLabel']}',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.onSurfaceVariant)),
+                      ),
+                      ...slots.map((slot) => Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: _SlotCell(slot: slot.cast<String, dynamic>()),
+                          )),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildUpcomingBookings(VenueDashboardState state) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text('Upcoming Bookings',
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.onSurface)),
+      const SizedBox(height: 12),
+      ...state.upcomingBookings.map((booking) =>
+          _BookingTile(booking: (booking as Map).cast<String, dynamic>())),
+    ],
+  );
+}
+
+Future<void> _signOut(BuildContext context) async {
+  await context.read<AuthViewModel>().signOut();
+  if (!context.mounted) return;
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => const LoginScreen()),
+    (_) => false,
+  );
+}
+
+Widget _buildBottomNav(BuildContext context, VenueDashboardState state, String venueId) {
+  return NavigationBar(
+    selectedIndex: state.selectedNavIndex,
+    onDestinationSelected: (index) {
+      context.read<VenueDashboardViewModel>().onNavTap(index);
+      switch (index) {
+        case 0: break;
+        case 1:
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AvailabilityScreen(venueId: venueId),
+            ),
+          );
+          break;
+        case 2:
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MapScreen()),
+          );
+          break;
+        case 3:
+          _signOut(context);
+          break;
+      }
+    },
+    destinations: const [
+      NavigationDestination(
+        icon: Icon(Icons.home_outlined),
+        selectedIcon: Icon(Icons.home_rounded),
+        label: 'Home',
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.calendar_month_outlined),
+        selectedIcon: Icon(Icons.calendar_month_rounded),
+        label: 'Court Slots',
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.explore_outlined),
+        selectedIcon: Icon(Icons.explore_rounded),
+        label: 'Discover',
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.logout_rounded),
+        label: 'Sign Out',
+      ),
+    ],
+  );
+}
 
 class _StatCard extends StatelessWidget {
   final String label;
@@ -426,21 +472,21 @@ class _SlotCell extends StatelessWidget {
 
   Color get _bgColor {
     switch (slot['status']) {
-      case 'booked': return const Color(0xFF0D7A3E);
-      case 'available': return const Color(0xFF0D7A3E);
-      case 'blocked': return const Color(0xFFFBB040).withValues(alpha: 0.3);
-      case 'maintenance': return const Color(0xFFE5E7EB);
-      default: return const Color(0xFFF0F0F0);
+      case 'booked': return AppColors.secondary;
+      case 'available': return AppColors.secondary;
+      case 'blocked': return AppColors.tertiary.withValues(alpha: 0.3);
+      case 'maintenance': return AppColors.outline;
+      default: return AppColors.background;
     }
   }
 
   Color get _textColor {
     switch (slot['status']) {
-      case 'booked': return Colors.white;
-      case 'available': return Colors.white;
+      case 'booked': return AppColors.onSecondary;
+      case 'available': return AppColors.onSecondary;
       case 'blocked': return const Color(0xFFD97706);
-      case 'maintenance': return const Color(0xFF6B7280);
-      default: return const Color(0xFF9CA3AF);
+      case 'maintenance': return AppColors.onSurfaceVariant;
+      default: return AppColors.onSurfaceVariant;
     }
   }
 
@@ -463,7 +509,7 @@ class _SlotCell extends StatelessWidget {
         color: _bgColor,
         borderRadius: BorderRadius.circular(10),
         border: slot['status'] == 'blocked'
-            ? Border.all(color: const Color(0xFFFBB040))
+            ? Border.all(color: AppColors.tertiary)
             : null,
       ),
       child: Center(
@@ -489,7 +535,7 @@ class _BookingTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         elevation: 0,
         child: InkWell(
@@ -517,18 +563,18 @@ class _BookingTile extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A2E))),
+                              color: AppColors.onSurface)),
                       Text(
                         '${booking['playerName']} · ${booking['court']}'
                         '${isTentative ? ' (Tentative)' : ''}',
                         style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF6B7280)),
+                            fontSize: 12, color: AppColors.onSurfaceVariant),
                       ),
                     ],
                   ),
                 ),
                 const Icon(Icons.chevron_right,
-                    color: Color(0xFF9CA3AF), size: 20),
+                    color: AppColors.onSurfaceVariant, size: 20),
               ],
             ),
           ),

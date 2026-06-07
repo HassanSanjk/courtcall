@@ -1,7 +1,8 @@
 // rsvp_roundtrip_integration_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:courtcall/models/models.dart';
-import 'package:courtcall/repositories/mocks/mock_player_repository.dart';
+import 'mocks/mock_player_repository.dart';
+import 'mocks/mock_venue_repository.dart';
 import 'package:courtcall/features/player/session_feed/session_feed_viewmodel.dart';
 import 'package:courtcall/features/player/rsvp_confirmation/rsvp_confirmation_viewmodel.dart';
 import 'package:courtcall/features/player/payment_history/payment_history_viewmodel.dart';
@@ -42,8 +43,11 @@ void main() {
   const playerId = 'player_001';
   const playerName = 'Hussein';
 
+  late MockVenueRepository venueRepo;
+
   setUp(() {
     repo = MockPlayerRepository();
+    venueRepo = MockVenueRepository();
   });
 
   tearDown(() => repo.dispose());
@@ -73,6 +77,7 @@ void main() {
     test('Step 2: Player confirms via RSVP screen', () async {
       final rsvpVm = RsvpConfirmationViewModel(
         repository: repo,
+        venueRepository: venueRepo,
         session: testSession,
         playerId: playerId,
         playerName: playerName,
@@ -91,12 +96,15 @@ void main() {
       );
       expect(rsvp?.status, 'confirmed');
       expect(rsvp?.declineReason, isNull);
+
+      // rsvpCount incremented by upsertRsvp's batch write (atomic with RSVP doc)
       rsvpVm.dispose();
     });
 
     test('Step 3: Player cancels with self reason', () async {
       final rsvpVm = RsvpConfirmationViewModel(
         repository: repo,
+        venueRepository: venueRepo,
         session: testSession,
         playerId: playerId,
         playerName: playerName,

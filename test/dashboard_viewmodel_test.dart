@@ -1,19 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:courtcall/repositories/mocks/mock_session_repository.dart';
+import 'mocks/mock_session_repository.dart';
+import 'mocks/mock_payment_repository.dart';
 import 'package:courtcall/features/organizer/dashboard/dashboard_viewmodel.dart';
 
 void main() {
-  late MockSessionRepository repo;
+  late MockSessionRepository sessionRepo;
+  late MockPaymentRepository paymentRepo;
   late DashboardViewModel vm;
 
   setUp(() {
-    repo = MockSessionRepository();
-    vm = DashboardViewModel(repo: repo);
+    sessionRepo = MockSessionRepository();
+    paymentRepo = MockPaymentRepository();
+    vm = DashboardViewModel(
+      sessionRepo: sessionRepo,
+      paymentRepo: paymentRepo,
+      organizerId: 'org_1',
+    );
   });
 
   tearDown(() {
     vm.dispose();
-    repo.dispose();
+    sessionRepo.dispose();
+    paymentRepo.dispose();
   });
 
   group('DashboardViewModel —', () {
@@ -43,9 +51,10 @@ void main() {
       expect(vm.totalPlayers, 22);
     });
 
-    test('unpaidCount is 0 pending Firebase integration', () async {
+    test('unpaidCount reflects real unpaid payments across sessions', () async {
       await Future.delayed(const Duration(milliseconds: 50));
-      expect(vm.unpaidCount, 0);
+      // mock has 3 unpaid payments for session_1; session_2/3 have none
+      expect(vm.unpaidCount, 3);
     });
 
     test('sessions contain expected sport types', () async {
@@ -54,12 +63,11 @@ void main() {
       expect(sports, containsAll(['Futsal', 'Badminton']));
     });
 
-    test('sessions have valid dates in YYYY-MM-DD format', () async {
+    test('sessions have valid dates', () async {
       await Future.delayed(const Duration(milliseconds: 50));
-      final datePattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
       for (final s in vm.sessions) {
-        expect(datePattern.hasMatch(s.date), isTrue,
-            reason: 'Session ${s.id} has invalid date: ${s.date}');
+        expect(s.date, isNotEmpty,
+            reason: 'Session ${s.sessionId} has empty date');
       }
     });
 

@@ -69,7 +69,7 @@ class SessionCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primaryNavy,
@@ -78,26 +78,26 @@ class SessionCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined,
-                          size: 13, color: Colors.black45),
+                      Icon(Icons.location_on_outlined,
+                          size: 13, color: AppColors.textSecondary),
                       const SizedBox(width: 3),
                       Text(
                         venue,
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.black54),
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.people_outline,
-                          size: 13, color: Colors.black45),
+                      Icon(Icons.people_outline,
+                          size: 13, color: AppColors.textSecondary),
                       const SizedBox(width: 3),
                       Text(
                         '$playerCount / $maxPlayers players',
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.black54),
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                       const Spacer(),
                       StatusPill(

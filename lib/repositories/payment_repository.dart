@@ -1,4 +1,4 @@
-import '../models/payment.dart';
+import '../models/models.dart';
 
 abstract class PaymentRepository {
   Stream<List<Payment>> watchPaymentsForSession(String sessionId);

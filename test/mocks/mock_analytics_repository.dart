@@ -1,6 +1,6 @@
 // repositories/mocks/mock_analytics_repository.dart
 
-import '../analytics_repository.dart';
+import 'package:courtcall/repositories/analytics_repository.dart';
 
 class MockAnalyticsRepository implements AnalyticsRepository {
   static final Map<String, Map<String, dynamic>> _data = {

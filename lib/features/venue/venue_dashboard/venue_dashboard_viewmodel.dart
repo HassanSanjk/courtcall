@@ -1,5 +1,6 @@
 // features/venue/venue_dashboard/venue_dashboard_viewmodel.dart
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../repositories/firebase/firebase_venue_dashboard_repository.dart';
 import '../../../repositories/venue_dashboard_repository.dart';
@@ -34,6 +35,7 @@ class VenueDashboardState {
   List<dynamic> get courtNames => data['courtNames'] ?? [];
   List<dynamic> get schedule => data['schedule'] ?? [];
   List<dynamic> get upcomingBookings => data['upcomingBookings'] ?? [];
+  String? get venueImageUrl => data['imageUrl'] as String?;
 
   String _buildGreeting(String name) {
     final hour = DateTime.now().hour;
@@ -46,6 +48,7 @@ class VenueDashboardViewModel extends ChangeNotifier {
   final VenueDashboardRepository _repo;
   final String _venueId;
   VenueDashboardState _state = const VenueDashboardState();
+  StreamSubscription? _sub;
 
   VenueDashboardState get state => _state;
 
@@ -56,14 +59,27 @@ class VenueDashboardViewModel extends ChangeNotifier {
   }
 
   void _init() {
-    _repo.watchDashboardData(_venueId).listen((data) {
+    _sub?.cancel();
+    _sub = _repo.watchDashboardData(_venueId).listen((data) {
       _state = _state.copyWith(data: data, isLoading: false);
       notifyListeners();
     });
   }
 
+  Future<void> refresh() async {
+    _state = _state.copyWith(isLoading: true);
+    notifyListeners();
+    _init();
+  }
+
   void onNavTap(int index) {
     _state = _state.copyWith(selectedNavIndex: index);
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }

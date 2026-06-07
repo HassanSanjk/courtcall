@@ -1,6 +1,6 @@
 // repositories/mocks/mock_venue_dashboard_repository.dart
 
-import '../venue_dashboard_repository.dart';
+import 'package:courtcall/repositories/venue_dashboard_repository.dart';
 
 class MockVenueDashboardRepository implements VenueDashboardRepository {
   static final Map<String, dynamic> _data = {

@@ -1,9 +1,7 @@
-// features/venue/cancellation_alert/cancellation_alert_viewmodel.dart
-
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../repositories/cancellation_repository.dart';
-import '../../../repositories/mocks/mock_cancellation_repository.dart';
 
 class CancellationAlertViewModel extends ChangeNotifier {
   final CancellationRepository _repo;
@@ -12,9 +10,10 @@ class CancellationAlertViewModel extends ChangeNotifier {
   Map<String, dynamic> _alert = {};
   bool isLoading = true;
   bool isMarkingAvailable = false;
+  StreamSubscription? _sub;
 
-  CancellationAlertViewModel({CancellationRepository? repo, required String venueId})
-      : _repo = repo ?? MockCancellationRepository(),
+  CancellationAlertViewModel({required CancellationRepository repo, required String venueId})
+      : _repo = repo,
         _venueId = venueId {
     _init();
   }
@@ -30,7 +29,8 @@ class CancellationAlertViewModel extends ChangeNotifier {
   }
 
   void _init() {
-    _repo.watchCancellationAlert(_venueId).listen((data) {
+    _sub?.cancel();
+    _sub = _repo.watchCancellationAlert(_venueId).listen((data) {
       _alert = data;
       isLoading = false;
       notifyListeners();
@@ -54,5 +54,11 @@ class CancellationAlertViewModel extends ChangeNotifier {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }

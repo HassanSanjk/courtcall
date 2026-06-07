@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../models/models.dart';
 import 'cancellation_viewmodel.dart';
 
 class CancellationScreen extends StatelessWidget {
-  const CancellationScreen({super.key});
+  final Session session;
+  const CancellationScreen({super.key, required this.session});
 
   static const Color _navy = Color(0xFF1B2A4A);
   static const Color _accentGreen = Color(0xFF00E676);
@@ -35,7 +37,7 @@ class CancellationScreen extends StatelessWidget {
           children: [
             _WarningBanner(),
             const SizedBox(height: 20),
-            _SessionSummaryCard(),
+            _SessionSummaryCard(session: session),
             const SizedBox(height: 20),
             _ReasonDropdown(
               selectedReason: vm.selectedReason,
@@ -107,7 +109,7 @@ class CancellationScreen extends StatelessWidget {
 
   Future<void> _onConfirm(
       BuildContext context, CancellationViewModel vm) async {
-    await vm.confirmCancellation('session_1');
+    await vm.confirmCancellation();
     if (!context.mounted) return;
     if (vm.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -157,6 +159,9 @@ class _WarningBanner extends StatelessWidget {
 }
 
 class _SessionSummaryCard extends StatelessWidget {
+  final Session session;
+  const _SessionSummaryCard({required this.session});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -166,26 +171,26 @@ class _SessionSummaryCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Friday Futsal',
-            style: TextStyle(
+            session.sport,
+            style: const TextStyle(
               color: Color(0xFF1B2A4A),
               fontWeight: FontWeight.bold,
               fontSize: 17,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
-            'Nexus Futsal Court 3',
-            style: TextStyle(color: Colors.black54, fontSize: 13),
+            '${session.venueName} ${session.court}',
+            style: const TextStyle(color: Colors.black54, fontSize: 13),
           ),
-          SizedBox(height: 2),
+          const SizedBox(height: 2),
           Text(
-            '9 May · 8:00 PM',
-            style: TextStyle(color: Colors.black54, fontSize: 13),
+            '${session.date} · ${session.time}',
+            style: const TextStyle(color: Colors.black54, fontSize: 13),
           ),
         ],
       ),

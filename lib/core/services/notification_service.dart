@@ -61,7 +61,7 @@ class NotificationService {
       initSettings,
       onDidReceiveNotificationResponse: (details) {
         // Payload is the FCM data map serialized as JSON string.
-        // Navigation wiring goes here once Mohammed's router is ready.
+        // Navigation can parse payload and push relevant screen here.
       },
     );
 

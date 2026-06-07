@@ -1,21 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:courtcall/features/venue/availability/availability_screen.dart';
 import 'package:courtcall/repositories/availability_repository.dart';
 
 class MockAvailabilityRepository extends Mock implements AvailabilityRepository {}
 
-Widget Function(Widget) testAppBuilder = (Widget child) => MaterialApp.router(
-  routerConfig: GoRouter(
-    initialLocation: '/',
-    routes: [
-      GoRoute(path: '/', builder: (context, state) => child),
-    ],
-  ),
-);
+Widget Function(Widget) testAppBuilder = (Widget child) => MaterialApp(home: child);
 
 void main() {
   testWidgets('shows loading then renders slots', (tester) async {

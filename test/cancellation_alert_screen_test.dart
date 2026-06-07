@@ -1,21 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:courtcall/features/venue/cancellation_alert/cancellation_alert_screen.dart';
 import 'package:courtcall/repositories/cancellation_repository.dart';
 
 class MockCancellationRepository extends Mock implements CancellationRepository {}
 
-Widget Function(Widget) testAppBuilder = (Widget child) => MaterialApp.router(
-  routerConfig: GoRouter(
-    initialLocation: '/',
-    routes: [
-      GoRoute(path: '/', builder: (context, state) => child),
-    ],
-  ),
-);
+Widget Function(Widget) testAppBuilder = (Widget child) => MaterialApp(home: child);
 
 void main() {
   testWidgets('shows loading then renders alert details', (tester) async {

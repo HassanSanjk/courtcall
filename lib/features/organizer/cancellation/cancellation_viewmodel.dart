@@ -1,17 +1,22 @@
 import 'package:flutter/foundation.dart';
 import '../../../repositories/session_repository.dart';
-import '../../../repositories/mocks/mock_session_repository.dart';
+import '../../../models/models.dart';
 
 class CancellationViewModel extends ChangeNotifier {
   final SessionRepository _repo;
+  final String sessionId;
+  final Session session;
 
   String selectedReason = 'Court unavailable';
   bool notifyPlayers = true;
   bool isCancelling = false;
   String? errorMessage;
 
-  CancellationViewModel({SessionRepository? repo})
-      : _repo = repo ?? MockSessionRepository();
+  CancellationViewModel({
+    required SessionRepository sessionRepo,
+    required this.sessionId,
+    required this.session,
+  }) : _repo = sessionRepo;
 
   static const List<String> reasons = [
     'Court unavailable',
@@ -31,10 +36,10 @@ class CancellationViewModel extends ChangeNotifier {
   }
 
   String get previewMessage =>
-      'CourtCall: Friday Futsal at Nexus has been cancelled by Azri. '
+      'CourtCall: ${session.sport} at ${session.venueName} has been cancelled. '
       'Reason: ${selectedReason.toLowerCase()}. Your slot has been released.';
 
-  Future<void> confirmCancellation(String sessionId) async {
+  Future<void> confirmCancellation() async {
     isCancelling = true;
     errorMessage = null;
     notifyListeners();

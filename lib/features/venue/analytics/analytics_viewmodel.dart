@@ -1,8 +1,6 @@
-// features/venue/analytics/analytics_viewmodel.dart
-
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../repositories/analytics_repository.dart';
-import '../../../repositories/mocks/mock_analytics_repository.dart';
 
 class AnalyticsViewModel extends ChangeNotifier {
   final AnalyticsRepository _repo;
@@ -11,6 +9,7 @@ class AnalyticsViewModel extends ChangeNotifier {
   Map<String, dynamic> _data = {};
   bool isLoading = true;
   String selectedPeriod = 'thisWeek';
+  StreamSubscription? _sub;
 
   final List<Map<String, dynamic>> periods = [
     {'key': 'thisWeek', 'label': 'This Week'},
@@ -18,8 +17,8 @@ class AnalyticsViewModel extends ChangeNotifier {
     {'key': 'allTime', 'label': 'All Time'},
   ];
 
-  AnalyticsViewModel({AnalyticsRepository? repo, required String venueId})
-      : _repo = repo ?? MockAnalyticsRepository(),
+  AnalyticsViewModel({required AnalyticsRepository repo, required String venueId})
+      : _repo = repo,
         _venueId = venueId {
     _init();
   }
@@ -38,7 +37,8 @@ class AnalyticsViewModel extends ChangeNotifier {
   List<dynamic> get topOrganizers => _data['topOrganizers'] ?? [];
 
   void _init() {
-    _repo.watchAnalytics(_venueId, selectedPeriod).listen((data) {
+    _sub?.cancel();
+    _sub = _repo.watchAnalytics(_venueId, selectedPeriod).listen((data) {
       _data = data;
       isLoading = false;
       notifyListeners();
@@ -50,5 +50,11 @@ class AnalyticsViewModel extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     _init();
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }

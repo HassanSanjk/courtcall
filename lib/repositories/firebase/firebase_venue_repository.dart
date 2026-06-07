@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/models.dart';
 import '../venue_repository.dart';
 
 class FirebaseVenueRepository implements VenueRepository {
@@ -6,6 +7,21 @@ class FirebaseVenueRepository implements VenueRepository {
 
   FirebaseVenueRepository({FirebaseFirestore? db})
       : _db = db ?? FirebaseFirestore.instance;
+
+  @override
+  Future<List<Venue>> getAllVenues() async {
+    final snapshot = await _db.collection('venues').get();
+    return snapshot.docs
+        .map((doc) => Venue.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getVenueById(String venueId) async {
+    final doc = await _db.collection('venues').doc(venueId).get();
+    if (!doc.exists) return null;
+    return {'venueId': doc.id, ...doc.data()!};
+  }
 
   @override
   Future<Map<String, dynamic>?> getVenueByOwnerId(String ownerId) async {
@@ -83,5 +99,12 @@ class FirebaseVenueRepository implements VenueRepository {
     }
 
     await batch.commit();
+  }
+
+  @override
+  Future<void> updateVenueImage(String venueId, String imageUrl) async {
+    await _db.collection('venues').doc(venueId).update({
+      'imageUrl': imageUrl,
+    });
   }
 }

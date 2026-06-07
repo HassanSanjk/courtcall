@@ -95,7 +95,9 @@ class Session {
 
   final int maxPlayers;
 
-  /// Maintained by Cloud Function — do NOT write from client.
+  /// Maintained client-side via Firestore batch writes (FieldValue.increment).
+  /// Incremented when a player confirms, decremented when a confirmed player
+  /// declines or is removed by the organizer. No Cloud Function deployed.
   final int rsvpCount;
 
   final double costPerPlayer;
@@ -250,6 +252,41 @@ class Rsvp {
         if (declineReason != null) 'declineReason': declineReason,
         if (respondedAt != null)
           'respondedAt': Timestamp.fromDate(respondedAt!),
+      };
+}
+
+// ── Venue ─────────────────────────────────────────────────────────────────────
+
+/// Mirrors `venues/{venueId}`.
+class Venue {
+  final String venueId;
+  final String name;
+  final String address;
+  final List<String> courts;
+  final String? imageUrl;
+
+  const Venue({
+    required this.venueId,
+    required this.name,
+    required this.address,
+    required this.courts,
+    this.imageUrl,
+  });
+
+  factory Venue.fromMap(String id, Map<String, dynamic> map) => Venue(
+        venueId: id,
+        name: map['name'] as String? ?? '',
+        address: map['address'] as String? ?? '',
+        courts: (map['courts'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+        imageUrl: map['imageUrl'] as String?,
+      );
+
+  Map<String, dynamic> toMap() => {
+        'venueId': venueId,
+        'name': name,
+        'address': address,
+        'courts': courts,
+        if (imageUrl != null) 'imageUrl': imageUrl,
       };
 }
 

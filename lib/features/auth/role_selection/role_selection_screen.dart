@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_viewmodel.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../organizer/dashboard/dashboard_screen.dart';
+import '../../venue/venue_dashboard/venue_dashboard_screen.dart';
+import '../../../core/widgets/player_shell_screen.dart';
 
-/// Role selection screen shown after a user enters their email/password.
-///
-/// The user picks Player, Organizer, or Venue Owner. Their choice is
-/// written to Firestore via [AuthViewModel.register] and they are
-/// navigated to their role's home screen.
 class RoleSelectionScreen extends StatefulWidget {
-  RoleSelectionScreen({
+  const RoleSelectionScreen({
     super.key,
     required this.email,
     required this.password,
@@ -29,22 +27,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   static const _roles = [
     _RoleOption(
-      role: 'player',
-      title: 'Player',
-      subtitle: 'Join sessions, RSVP, and track payments',
-      icon: Icons.sports_soccer,
+      role: 'organizer',
+      title: 'Session Organizer',
+      subtitle: 'I book courts and run sessions',
+      icon: Icons.monitor_heart_outlined,
     ),
     _RoleOption(
-      role: 'organizer',
-      title: 'Organizer',
-      subtitle: 'Create and manage sessions, track RSVPs',
-      icon: Icons.edit_calendar_outlined,
+      role: 'player',
+      title: 'Regular Player',
+      subtitle: 'I join sessions and pay my share',
+      icon: Icons.person_outline_rounded,
     ),
     _RoleOption(
       role: 'venue_owner',
       title: 'Venue Owner',
-      subtitle: 'Manage availability and view revenue',
-      icon: Icons.stadium_outlined,
+      subtitle: 'I manage courts and track',
+      icon: Icons.store_mall_directory_outlined,
     ),
   ];
 
@@ -54,89 +52,150 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     super.dispose();
   }
 
+  bool get _canContinue =>
+      _selectedRole != null && _nameController.text.trim().isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<AuthViewModel>();
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-      appBar: AppBar(
-        title: Text('Choose Your Role'),
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('What brings you to CourtCall?',
-                style: Theme.of(context).textTheme.headlineMedium),
-            SizedBox(height: 4.0),
-            Text('You can only have one role per account.',
-                style: Theme.of(context).textTheme.bodySmall),
-            SizedBox(height: 24.0),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
 
-            // ── Name field ──────────────────────────────────────────
-            TextField(
-              controller: _nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: InputDecoration(
-                labelText: 'Full Name',
-                hintText: 'e.g. Hussein Ahmad',
-                prefixIcon: Icon(Icons.person_outline),
+              const Text(
+                'I am joining as...',
+                style: TextStyle(
+                  color: AppColors.darkNavy,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
               ),
-            ),
-            SizedBox(height: 24.0),
 
-            // ── Error banner ────────────────────────────────────────
-            if (vm.errorMessage != null) ...[
-              Container(
+              const SizedBox(height: 24),
+
+              TextField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                onChanged: (_) => setState(() {}),
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppColors.darkNavy,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Full Name',
+                  hintStyle:
+                      const TextStyle(color: AppColors.textLight, fontSize: 15),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        const BorderSide(color: AppColors.outline, width: 1.4),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        const BorderSide(color: AppColors.accentGreen, width: 1.8),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              if (vm.errorMessage != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.redLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.error),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline,
+                          color: AppColors.error, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          vm.errorMessage!,
+                          style: const TextStyle(
+                              fontSize: 13, color: AppColors.error),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              Expanded(
+                child: ListView(
+                  children: [
+                    for (final option in _roles) ...[
+                      _RoleCard(
+                        option: option,
+                        isSelected: _selectedRole == option.role,
+                        onTap: () =>
+                            setState(() => _selectedRole = option.role),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                  ],
+                ),
+              ),
+
+              SizedBox(
                 width: double.infinity,
-                padding: const EdgeInsets.all(8.0),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: Theme.of(context).colorScheme.error),
-                ),
-                child: Text(
-                  vm.errorMessage!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-              SizedBox(height: 16.0),
-            ],
-
-            // ── Role cards ──────────────────────────────────────────
-            for (final option in _roles) ...[
-              _RoleCard(
-                option: option,
-                isSelected: _selectedRole == option.role,
-                onTap: () =>
-                    setState(() => _selectedRole = option.role),
-              ),
-              SizedBox(height: 8.0),
-            ],
-            SizedBox(height: 24.0),
-
-            // ── Continue button ─────────────────────────────────────
-            ElevatedButton(
-              onPressed:
-                  (vm.isLoading || _selectedRole == null)
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: (vm.isLoading || !_canContinue)
                       ? null
                       : () => _register(context, vm),
-              child: vm.isLoading
-                  ? SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Theme.of(context).colorScheme.surface,
-                      ),
-                    )
-                  : Text('Continue'),
-            ),
-          ],
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.darkNavy,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    disabledBackgroundColor:
+                        AppColors.darkNavy.withValues(alpha: 0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: vm.isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Continue',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
     );
@@ -146,7 +205,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter your name.')),
+        const SnackBar(content: Text('Please enter your name.')),
       );
       return;
     }
@@ -159,17 +218,19 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     );
 
     if (success && context.mounted) {
-      final route = switch (_selectedRole!) {
-        'organizer'   => '/organizer/dashboard',
-        'venue_owner' => '/venue/setup',
-        _             => '/player/session-feed',
-      };
-      context.go(route);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => switch (_selectedRole!) {
+            'organizer' => const DashboardScreen(),
+            'venue_owner' => const VenueDashboardScreen(),
+            _ => const PlayerShellScreen(),
+          },
+        ),
+        (_) => false,
+      );
     }
   }
 }
-
-// ── Role option data ──────────────────────────────────────────────────────────
 
 class _RoleOption {
   const _RoleOption({
@@ -185,74 +246,122 @@ class _RoleOption {
   final IconData icon;
 }
 
-// ── Role card widget ──────────────────────────────────────────────────────────
-
 class _RoleCard extends StatelessWidget {
-  _RoleCard({
+  final _RoleOption option;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RoleCard({
     required this.option,
     required this.isSelected,
     required this.onTap,
   });
 
-  final _RoleOption option;
-  final bool isSelected;
-  final VoidCallback onTap;
+  static const Color _selectedBg = Color(0xFFF0FBF5);
+  static const Color _selectedBorder = Color(0xFFB8EDD5);
+  static const Color _mutedIcon = Color(0xFF6B7A99);
+  static const Color _mutedCircleBg = Color(0xFFF0F2F6);
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(16.0),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.06)
-              : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16.0),
+          color: isSelected ? _selectedBg : Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outlineVariant,
-            width: isSelected ? 2 : 1,
+            color: isSelected ? _selectedBorder : AppColors.outline,
+            width: isSelected ? 1.8 : 1.4,
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              child: Icon(
-                option.icon,
-                color: isSelected
-                    ? Theme.of(context).colorScheme.surface
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
-                size: 24,
-              ),
-            ),
-            SizedBox(width: 16.0),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(option.title,
-                      style: Theme.of(context).textTheme.titleMedium),
-                  SizedBox(height: 2),
-                  Text(option.subtitle,
-                      style: Theme.of(context).textTheme.bodySmall),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.accentGreen.withValues(alpha: 0.10),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.accentGreen.withValues(alpha: 0.12)
+                      : _mutedCircleBg,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  option.icon,
+                  size: 24,
+                  color: isSelected ? AppColors.accentGreen : _mutedIcon,
+                ),
               ),
-            ),
-            if (isSelected)
-              Icon(Icons.check_circle,
-                  color: Theme.of(context).colorScheme.primary, size: 22),
-          ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.title,
+                      style: const TextStyle(
+                        color: AppColors.darkNavy,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      option.subtitle,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: isSelected
+                    ? Container(
+                        key: const ValueKey('checked'),
+                        width: 24,
+                        height: 24,
+                        decoration: const BoxDecoration(
+                          color: AppColors.accentGreen,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      )
+                    : const SizedBox(
+                        key: ValueKey('unchecked'),
+                        width: 24,
+                        height: 24,
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
