@@ -34,6 +34,16 @@ dev_dependencies:
     sdk: flutter
   mocktail: ^1.0.4
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/images/logo.png"
+  web:
+    generate: true
+    image_path: "assets/images/logo.png"
 
 dependency_overrides:
   http: ^1.0.0
@@ -43,4 +53,3 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/icons/
