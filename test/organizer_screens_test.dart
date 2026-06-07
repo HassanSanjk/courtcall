@@ -103,12 +103,14 @@ void main() {
     testWidgets('renders filter pills', (tester) async {
       final rsvpRepo = MockRsvpRepository();
       final paymentRepo = MockPaymentRepository();
+      final sessionRepo = MockSessionRepository();
       await tester.pumpWidget(
         wrapApp(
           ChangeNotifierProvider(
             create: (_) => RsvpTrackerViewModel(
               rsvpRepo: rsvpRepo,
               paymentRepo: paymentRepo,
+              sessionRepo: sessionRepo,
               session: mockSession,
             ),
             child: RsvpTrackerScreen(session: mockSession),

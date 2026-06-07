@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../models/models.dart';
 import '../../../repositories/rsvp_repository.dart';
 import '../../../repositories/payment_repository.dart';
+import '../../../repositories/session_repository.dart';
 
 class PlayerRsvpEntry {
   final String playerId;
@@ -24,6 +25,7 @@ class PlayerRsvpEntry {
 class RsvpTrackerViewModel extends ChangeNotifier {
   final RsvpRepository _rsvpRepo;
   final PaymentRepository _paymentRepo;
+  final SessionRepository _sessionRepo;
   final Session session;
 
   StreamSubscription? _rsvpSub;
@@ -36,9 +38,11 @@ class RsvpTrackerViewModel extends ChangeNotifier {
   RsvpTrackerViewModel({
     required RsvpRepository rsvpRepo,
     required PaymentRepository paymentRepo,
+    required SessionRepository sessionRepo,
     required this.session,
   })  : _rsvpRepo = rsvpRepo,
-        _paymentRepo = paymentRepo {
+        _paymentRepo = paymentRepo,
+        _sessionRepo = sessionRepo {
     _init();
   }
 
@@ -58,7 +62,11 @@ class RsvpTrackerViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void sendReminder() {}
+  Future<void> sendReminder() async {
+    await _sessionRepo.updateSession(session.sessionId, {
+      'lastReminderSent': DateTime.now(),
+    });
+  }
 
   void shareInviteLink() {
     final msg = 'Join my ${session.sport} session at ${session.venueName} '

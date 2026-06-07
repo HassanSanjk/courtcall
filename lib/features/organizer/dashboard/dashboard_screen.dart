@@ -283,6 +283,7 @@ class _SessionList extends StatelessWidget {
               create: (_) => RsvpTrackerViewModel(
                 rsvpRepo: context.read<RsvpRepository>(),
                 paymentRepo: context.read<PaymentRepository>(),
+                sessionRepo: context.read<SessionRepository>(),
                 session: s,
               ),
             ),
