@@ -14,7 +14,7 @@ void main() {
     court: 'Court 1',
     date: '2026-05-19',
     dateTimestamp: DateTime(2026, 5, 19),
-    time: '8:00 PM–10:00 PM',
+    time: '8:00 PM-10:00 PM',
     maxPlayers: 10,
     rsvpCount: 5,
     costPerPlayer: 15.0,
@@ -37,7 +37,7 @@ void main() {
     repo.dispose();
   });
 
-  group('CancellationViewModel —', () {
+  group('CancellationViewModel -', () {
     test('default reason is Court unavailable', () {
       expect(vm.selectedReason, 'Court unavailable');
     });

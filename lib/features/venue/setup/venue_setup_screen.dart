@@ -3,12 +3,12 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../repositories/venue_repository.dart';
 import '../../auth/auth_viewmodel.dart';
-import '../../auth/login/login_screen.dart';
 import '../venue_dashboard/venue_dashboard_screen.dart';
 import 'venue_setup_viewmodel.dart';
 
 class VenueSetupScreen extends StatefulWidget {
-  const VenueSetupScreen({super.key});
+  final String? venueId;
+  const VenueSetupScreen({super.key, this.venueId});
 
   @override
   State<VenueSetupScreen> createState() => _VenueSetupScreenState();
@@ -34,9 +34,13 @@ class _VenueSetupScreenState extends State<VenueSetupScreen> {
     _addressCtrl.addListener(() => _viewModel.setAddress(_addressCtrl.text));
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = context.read<AuthViewModel>().currentUser;
-      if (user != null) {
-        _viewModel.checkExistingVenue(user.uid);
+      if (widget.venueId != null) {
+        _viewModel.loadVenueForEditing(widget.venueId!);
+      } else {
+        final user = context.read<AuthViewModel>().currentUser;
+        if (user != null) {
+          _viewModel.checkExistingVenue(user.uid);
+        }
       }
     });
   }
@@ -63,12 +67,16 @@ class _VenueSetupScreenState extends State<VenueSetupScreen> {
     if (!mounted) return;
     final s = _viewModel.state;
     if (s.successVenueId != null) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => VenueDashboardScreen(venueId: s.successVenueId),
-        ),
-        (_) => false,
-      );
+      if (widget.venueId == null) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => VenueDashboardScreen(venueId: s.successVenueId),
+          ),
+          (_) => false,
+        );
+      } else {
+        Navigator.of(context).pop();
+      }
       return;
     }
     _syncCourtControllers();
@@ -103,14 +111,11 @@ class _VenueSetupScreenState extends State<VenueSetupScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.onSurface),
-          onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (_) => false,
-          ),
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Setup Your Venue',
-          style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold),
+        title: Text(
+          widget.venueId != null ? 'Manage Venue' : 'Setup Your Venue',
+          style: const TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.bold),
         ),
       ),
       body: SingleChildScrollView(
@@ -240,7 +245,7 @@ class _VenueSetupScreenState extends State<VenueSetupScreen> {
                         ),
                       )
                     : Text(
-                        'Create Venue',
+                        widget.venueId != null ? 'Save Changes' : 'Create Venue',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -352,7 +357,11 @@ class _VenueSetupScreenState extends State<VenueSetupScreen> {
   Future<void> _submit() async {
     final user = context.read<AuthViewModel>().currentUser;
     if (user == null) return;
-    await _viewModel.createVenue(user.uid, user.name);
+    if (widget.venueId != null) {
+      await _viewModel.updateVenue();
+    } else {
+      await _viewModel.createVenue(user.uid, user.name);
+    }
   }
 
   InputDecoration _inputDecoration(String hint) {

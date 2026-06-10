@@ -124,4 +124,14 @@ class MockAvailabilityRepository implements AvailabilityRepository {
   Future<void> saveSlots(
           String venueId, List<Map<String, dynamic>> slots) =>
       Future.value();
+
+  @override
+  Future<bool> isSlotAvailable(
+          String venueId, int courtIndex, DateTime startTime, DateTime endTime) =>
+      Future.value(true);
+
+  @override
+  Future<void> markSlotBooked(
+          String venueId, int courtIndex, DateTime startTime, DateTime endTime, String sessionId) =>
+      Future.value();
 }

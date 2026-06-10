@@ -19,7 +19,7 @@ import 'package:courtcall/features/player/payment_history/payment_history_viewmo
 ///
 /// This test exercises the shared contract between all three Player
 /// ViewModels and verifies that state flows correctly through the
-/// MockPlayerRepository — the same contract the real Firebase repo must honour.
+/// MockPlayerRepository - the same contract the real Firebase repo must honour.
 void main() {
   late MockPlayerRepository repo;
 
@@ -31,7 +31,7 @@ void main() {
     court: 'Court 3',
     date: 'Friday, 9 May',
     dateTimestamp: DateTime(2025, 5, 9, 20, 0),
-    time: '8:00PM–10:00PM',
+    time: '8:00PM-10:00PM',
     maxPlayers: 12,
     rsvpCount: 8,
     costPerPlayer: 15.0,
@@ -52,7 +52,7 @@ void main() {
 
   tearDown(() => repo.dispose());
 
-  group('RSVP round-trip integration —', () {
+  group('RSVP round-trip integration -', () {
     test('Step 1: Feed shows session as pending', () async {
       final feedVm = SessionFeedViewModel(
         repository: repo,
@@ -162,7 +162,7 @@ void main() {
 
       await Future.delayed(const Duration(milliseconds: 50));
 
-      // FIX: no orElse — fails explicitly if payment disappears from list.
+      // FIX: no orElse - fails explicitly if payment disappears from list.
       final updated = payVm.filteredPayments
           .firstWhere((p) => p.paymentId == targetId);
       expect(updated.isPaid, isTrue);

@@ -107,4 +107,11 @@ class FirebaseVenueRepository implements VenueRepository {
       'imageUrl': imageUrl,
     });
   }
+
+  @override
+  Future<void> updateVenue(String venueId, Map<String, dynamic> venueData) async {
+    await _db.collection('venues').doc(venueId).update({
+      ...venueData,
+    });
+  }
 }

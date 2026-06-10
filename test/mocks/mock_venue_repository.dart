@@ -32,4 +32,7 @@ class MockVenueRepository implements VenueRepository {
 
   @override
   Future<void> updateVenueImage(String venueId, String imageUrl) async {}
+
+  @override
+  Future<void> updateVenue(String venueId, Map<String, dynamic> venueData) async {}
 }

@@ -57,7 +57,7 @@ class FirebaseSessionRepository implements SessionRepository {
     }).timeout(
       const Duration(seconds: 15),
       onTimeout: () => throw TimeoutException(
-        'Session creation timed out — check Firestore security rules.',
+        'Session creation timed out - check Firestore security rules.',
       ),
     );
     return id;

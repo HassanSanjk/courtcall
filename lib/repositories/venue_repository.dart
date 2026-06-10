@@ -12,4 +12,5 @@ abstract class VenueRepository {
     int endHour,
   );
   Future<void> updateVenueImage(String venueId, String imageUrl);
+  Future<void> updateVenue(String venueId, Map<String, dynamic> venueData);
 }

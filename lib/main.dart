@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -16,21 +17,37 @@ import 'repositories/firebase/firebase_venue_repository.dart';
 import 'repositories/firebase/firebase_session_repository.dart';
 import 'repositories/firebase/firebase_payment_repository.dart';
 import 'repositories/firebase/firebase_rsvp_repository.dart';
+import 'repositories/availability_repository.dart';
+import 'repositories/firebase/firebase_availability_repository.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+void main() {
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
 
-  final authViewModel = AuthViewModel(
-    authRepository: FirebaseAuthRepository(),
-  );
-  authViewModel.initialize();
+      final authViewModel = AuthViewModel(
+        authRepository: FirebaseAuthRepository(),
+      );
+      authViewModel.initialize();
 
-  runApp(MyApp(authViewModel: authViewModel));
+      runApp(MyApp(authViewModel: authViewModel));
+    },
+    (error, stack) {
+      if (error.toString().contains('permission-blocked')) {
+        debugPrint('[FCM] Web notification permission blocked - skipping FCM.');
+      } else {
+        FlutterError.reportError(FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+        ));
+      }
+    },
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -56,6 +73,9 @@ class MyApp extends StatelessWidget {
         ),
         Provider<RsvpRepository>(
           create: (_) => FirebaseRsvpRepository(),
+        ),
+        Provider<AvailabilityRepository>(
+          create: (_) => FirebaseAvailabilityRepository(),
         ),
       ],
       child: MaterialApp(

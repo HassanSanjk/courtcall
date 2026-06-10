@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:courtcall/models/models.dart';
 import 'mocks/mock_session_repository.dart';
 import 'mocks/mock_venue_repository.dart';
+import 'mocks/mock_availability_repository.dart';
 import 'package:courtcall/features/organizer/create_session/create_session_viewmodel.dart';
 
 void main() {
@@ -16,6 +17,7 @@ void main() {
     vm = CreateSessionViewModel(
       sessionRepo: repo,
       venueRepo: venueRepo,
+      availabilityRepo: MockAvailabilityRepository(),
       organizerId: 'org_1',
     );
   });

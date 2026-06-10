@@ -34,6 +34,9 @@ class CancellationAlertViewModel extends ChangeNotifier {
       _alert = data;
       isLoading = false;
       notifyListeners();
+    }, onError: (e) {
+      isLoading = false;
+      notifyListeners();
     });
   }
 
@@ -41,7 +44,9 @@ class CancellationAlertViewModel extends ChangeNotifier {
     isMarkingAvailable = true;
     notifyListeners();
 
-    await _repo.markSlotAvailable(_venueId, _alert['slotId'] ?? '');
+    try {
+      await _repo.markSlotAvailable(_venueId, _alert['slotId'] ?? '');
+    } catch (_) {}
 
     isMarkingAvailable = false;
     notifyListeners();

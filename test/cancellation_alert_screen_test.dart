@@ -26,7 +26,7 @@ void main() {
       'sessionName': 'Friday Futsal',
       'organizerName': 'Azri',
       'court': 'Court 1',
-      'timeRange': '8:00 PM – 10:00 PM',
+      'timeRange': '8:00 PM - 10:00 PM',
       'dateLabel': '9 May 2026, Friday',
       'lostRevenue': 'RM 120',
       'depositCollected': 'RM 50 deposit was collected.',

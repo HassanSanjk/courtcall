@@ -6,10 +6,10 @@ import '../../../repositories/venue_dashboard_repository.dart';
 import '../../../repositories/venue_repository.dart';
 import '../../auth/auth_viewmodel.dart';
 import '../../auth/login/login_screen.dart';
-import '../../maps/map_screen.dart';
 import '../setup/venue_setup_screen.dart';
 import '../availability/availability_screen.dart';
 import '../cancellation_alert/cancellation_alert_screen.dart';
+import '../analytics/analytics_screen.dart';
 
 class VenueDashboardScreen extends StatefulWidget {
   final String? venueId;
@@ -41,28 +41,37 @@ class _VenueDashboardScreenState extends State<VenueDashboardScreen> {
     }
 
     final user = context.read<AuthViewModel>().currentUser;
-    if (user == null) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (_) => false,
-      );
-      return;
-    }
-
-    final repo = context.read<VenueRepository>();
-    final venue = await repo.getVenueByOwnerId(user.uid);
-    if (venue == null) {
+    if (user == null || !mounted) {
       if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const VenueSetupScreen()),
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
         );
       }
       return;
     }
 
-    _venueId = venue['venueId'] as String;
-    if (mounted) setState(() => _loadingVenue = false);
+    try {
+      final repo = context.read<VenueRepository>();
+      final venue = await repo.getVenueByOwnerId(user.uid);
+      if (!mounted) return;
+
+      if (venue == null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const VenueSetupScreen()),
+        );
+        return;
+      }
+
+      _venueId = venue['venueId'] as String;
+      setState(() => _loadingVenue = false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load venue: $e')),
+      );
+    }
   }
 
   @override
@@ -162,9 +171,7 @@ Widget _buildHeader(BuildContext context, VenueDashboardState state, String venu
         ),
         Row(
           children: [
-            Stack(
-              children: [
-                IconButton(
+            IconButton(
               icon: const Icon(Icons.notifications_outlined, color: AppColors.onSurface),
               onPressed: () => Navigator.push(
                 context,
@@ -173,23 +180,18 @@ Widget _buildHeader(BuildContext context, VenueDashboardState state, String venu
                 ),
               ),
             ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                        color: Colors.orange, shape: BoxShape.circle),
-                  ),
-                ),
-              ],
+            IconButton(
+              icon: const Icon(Icons.bar_chart_outlined, color: AppColors.onSurface),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => AnalyticsScreen(venueId: venueId)),
+              ),
             ),
             IconButton(
               icon: const Icon(Icons.settings_outlined, color: AppColors.onSurface),
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const VenueSetupScreen()),
+                MaterialPageRoute(builder: (_) => VenueSetupScreen(venueId: venueId)),
               ),
             ),
           ],
@@ -223,7 +225,7 @@ Widget _buildVenuePhoto(VenueDashboardState state) {
             ),
           );
         },
-        errorBuilder: (_, _, _) => Image.asset(
+        errorBuilder: (context, error, stackTrace) => Image.asset(
           'assets/images/venue_placeholder.png',
           height: 160,
           fit: BoxFit.cover,
@@ -271,7 +273,7 @@ Widget _buildCourtGrid(BuildContext context, VenueDashboardState state, String v
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => AvailabilityScreen(venueId: venueId),
+                builder: (_) => AvailabilityScreen(venueId: venueId, courts: courtNames.cast<String>()),
               ),
             ),
             child: const Text('MANAGE',
@@ -354,8 +356,20 @@ Widget _buildUpcomingBookings(VenueDashboardState state) {
               fontWeight: FontWeight.bold,
               color: AppColors.onSurface)),
       const SizedBox(height: 12),
-      ...state.upcomingBookings.map((booking) =>
-          _BookingTile(booking: (booking as Map).cast<String, dynamic>())),
+      if (state.upcomingBookings.isEmpty)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: const Text(
+            'No upcoming bookings yet',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 14, color: AppColors.onSurfaceVariant),
+          ),
+        )
+      else
+        ...state.upcomingBookings.map((booking) =>
+            _BookingTile(booking: (booking as Map).cast<String, dynamic>())),
     ],
   );
 }
@@ -373,22 +387,23 @@ Widget _buildBottomNav(BuildContext context, VenueDashboardState state, String v
   return NavigationBar(
     selectedIndex: state.selectedNavIndex,
     onDestinationSelected: (index) {
-      context.read<VenueDashboardViewModel>().onNavTap(index);
+      final vm = context.read<VenueDashboardViewModel>();
+      vm.onNavTap(index);
       switch (index) {
         case 0: break;
         case 1:
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => AvailabilityScreen(venueId: venueId),
+              builder: (_) => AvailabilityScreen(venueId: venueId, courts: state.courtNames.cast<String>()),
             ),
-          );
+          ).then((_) => vm.onNavTap(0));
           break;
         case 2:
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const MapScreen()),
-          );
+            MaterialPageRoute(builder: (_) => AnalyticsScreen(venueId: venueId)),
+          ).then((_) => vm.onNavTap(0));
           break;
         case 3:
           _signOut(context);
@@ -407,9 +422,9 @@ Widget _buildBottomNav(BuildContext context, VenueDashboardState state, String v
         label: 'Court Slots',
       ),
       NavigationDestination(
-        icon: Icon(Icons.explore_outlined),
-        selectedIcon: Icon(Icons.explore_rounded),
-        label: 'Discover',
+        icon: Icon(Icons.bar_chart_outlined),
+        selectedIcon: Icon(Icons.bar_chart_rounded),
+        label: 'Analytics',
       ),
       NavigationDestination(
         icon: Icon(Icons.logout_rounded),
@@ -472,8 +487,8 @@ class _SlotCell extends StatelessWidget {
 
   Color get _bgColor {
     switch (slot['status']) {
-      case 'booked': return AppColors.secondary;
-      case 'available': return AppColors.secondary;
+      case 'booked': return AppColors.primary.withValues(alpha: 0.85);
+      case 'available': return AppColors.success.withValues(alpha: 0.2);
       case 'blocked': return AppColors.tertiary.withValues(alpha: 0.3);
       case 'maintenance': return AppColors.outline;
       default: return AppColors.background;
@@ -482,8 +497,8 @@ class _SlotCell extends StatelessWidget {
 
   Color get _textColor {
     switch (slot['status']) {
-      case 'booked': return AppColors.onSecondary;
-      case 'available': return AppColors.onSecondary;
+      case 'booked': return AppColors.onPrimary;
+      case 'available': return AppColors.greenBright;
       case 'blocked': return const Color(0xFFD97706);
       case 'maintenance': return AppColors.onSurfaceVariant;
       default: return AppColors.onSurfaceVariant;
@@ -534,51 +549,48 @@ class _BookingTile extends StatelessWidget {
     final isTentative = booking['isTentative'] == true;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      child: Material(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        elevation: 0,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () {},
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/venue_placeholder.png',
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/images/venue_placeholder.png',
-                    width: 44,
-                    height: 44,
-                    fit: BoxFit.cover,
-                  ),
+                Text('${booking['sessionName']}',
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurface)),
+                Text(
+                  '${booking['playerName']} · ${booking['court']}'
+                  '${isTentative ? ' (Tentative)' : ''}',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.onSurfaceVariant),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${booking['sessionName']}',
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.onSurface)),
-                      Text(
-                        '${booking['playerName']} · ${booking['court']}'
-                        '${isTentative ? ' (Tentative)' : ''}',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 2),
+                Text(
+                  '${booking['date']} · ${booking['time']}',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.onSurfaceVariant),
                 ),
-                const Icon(Icons.chevron_right,
-                    color: AppColors.onSurfaceVariant, size: 20),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -4,10 +4,12 @@ import 'package:intl/intl.dart';
 import '../../../models/models.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../repositories/venue_repository.dart';
+import '../../../repositories/availability_repository.dart';
 
 class CreateSessionViewModel extends ChangeNotifier {
   final SessionRepository _repo;
   final VenueRepository _venueRepo;
+  final AvailabilityRepository? _availabilityRepo;
   final String organizerId;
 
   String selectedSport = 'Futsal';
@@ -25,9 +27,11 @@ class CreateSessionViewModel extends ChangeNotifier {
   CreateSessionViewModel({
     required SessionRepository sessionRepo,
     required VenueRepository venueRepo,
+    AvailabilityRepository? availabilityRepo,
     required this.organizerId,
   })  : _repo = sessionRepo,
-        _venueRepo = venueRepo {
+        _venueRepo = venueRepo,
+        _availabilityRepo = availabilityRepo {
     _loadVenues();
   }
 
@@ -71,7 +75,7 @@ class CreateSessionViewModel extends ChangeNotifier {
 
   void setVenue(Venue venue) {
     selectedVenue = venue;
-    // Reset court when venue changes — previous court no longer valid.
+    // Reset court when venue changes - previous court no longer valid.
     selectedCourt = null;
     notifyListeners();
   }
@@ -102,9 +106,37 @@ class CreateSessionViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final courtIndex = selectedCourt != null
+          ? selectedVenue!.courts.indexOf(selectedCourt!)
+          : -1;
+      final slotStart = DateTime(
+        selectedDate!.year,
+        selectedDate!.month,
+        selectedDate!.day,
+        startTime!.hour,
+      );
+      final slotEnd = DateTime(
+        selectedDate!.year,
+        selectedDate!.month,
+        selectedDate!.day,
+        endTime!.hour,
+      );
+
+      if (_availabilityRepo != null && courtIndex >= 0) {
+        final available = await _availabilityRepo!
+            .isSlotAvailable(selectedVenue!.venueId, courtIndex, slotStart, slotEnd);
+        if (!available) {
+          errorMessage =
+              'This slot is not available for booking (blocked or already booked).';
+          isSaving = false;
+          notifyListeners();
+          return false;
+        }
+      }
+
       final dateStr = DateFormat('EEEE, d MMMM').format(selectedDate!);
-      final timeStr = '${_formatTime(startTime!)}–${_formatTime(endTime!)}';
-      await _repo.createSession({
+      final timeStr = '${_formatTime(startTime!)}-${_formatTime(endTime!)}';
+      final sessionId = await _repo.createSession({
         'sport': selectedSport,
         'organizerId': organizerId,
         'venueId': selectedVenue!.venueId,
@@ -120,9 +152,15 @@ class CreateSessionViewModel extends ChangeNotifier {
       }).timeout(
         const Duration(seconds: 15),
         onTimeout: () => throw TimeoutException(
-          'Session creation timed out — check Firestore security rules.',
+          'Session creation timed out - check Firestore security rules.',
         ),
       );
+
+      if (_availabilityRepo != null && courtIndex >= 0) {
+        await _availabilityRepo!.markSlotBooked(
+          selectedVenue!.venueId, courtIndex, slotStart, slotEnd, sessionId,
+        );
+      }
       return true;
     } catch (e) {
       if (e is TimeoutException) {

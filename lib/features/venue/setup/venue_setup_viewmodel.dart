@@ -17,6 +17,7 @@ class VenueSetupState {
   final File? venueImage;
   final String? errorMessage;
   final String? successVenueId;
+  final String? originalVenueId;
 
   const VenueSetupState({
     this.venueName = '',
@@ -31,7 +32,10 @@ class VenueSetupState {
     this.venueImage,
     this.errorMessage,
     this.successVenueId,
+    this.originalVenueId,
   });
+
+  bool get isEditing => originalVenueId != null;
 
   VenueSetupState copyWith({
     String? venueName,
@@ -46,6 +50,7 @@ class VenueSetupState {
     File? venueImage,
     String? errorMessage,
     String? successVenueId,
+    String? originalVenueId,
   }) {
     return VenueSetupState(
       venueName: venueName ?? this.venueName,
@@ -60,6 +65,7 @@ class VenueSetupState {
       venueImage: venueImage ?? this.venueImage,
       errorMessage: errorMessage ?? this.errorMessage,
       successVenueId: successVenueId ?? this.successVenueId,
+      originalVenueId: originalVenueId ?? this.originalVenueId,
     );
   }
 
@@ -102,6 +108,32 @@ class VenueSetupViewModel extends ChangeNotifier {
       _state = _state.copyWith(
         isLoading: false,
         successVenueId: venue['venueId'] as String?,
+      );
+    } else {
+      _state = _state.copyWith(isLoading: false);
+    }
+    notifyListeners();
+  }
+
+  Future<void> loadVenueForEditing(String venueId) async {
+    _state = _state.copyWith(isLoading: true);
+    notifyListeners();
+
+    final venue = await _repo.getVenueById(venueId);
+    if (venue != null) {
+      final courts = (venue['courts'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          ['Court 1'];
+      _state = _state.copyWith(
+        isLoading: false,
+        originalVenueId: venueId,
+        venueName: venue['name'] as String? ?? '',
+        address: venue['address'] as String? ?? '',
+        courtCount: courts.length,
+        courtNames: courts,
+        startHour: 8,
+        endHour: 22,
       );
     } else {
       _state = _state.copyWith(isLoading: false);
@@ -194,6 +226,50 @@ class VenueSetupViewModel extends ChangeNotifier {
       _state = _state.copyWith(
         isSaving: false,
         successVenueId: venueId,
+      );
+      notifyListeners();
+    } catch (e) {
+      _state = _state.copyWith(
+        isSaving: false,
+        errorMessage: e.toString(),
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateVenue() async {
+    if (!_state.isFormValid) return;
+
+    _state = _state.copyWith(isSaving: true, errorMessage: null);
+    notifyListeners();
+
+    try {
+      await _repo.updateVenue(_state.originalVenueId!, {
+        'name': _state.venueName.trim(),
+        'address': _state.address.trim(),
+        'courts': _state.courtNames.map((n) => n.trim()).toList(),
+      });
+
+      if (_state.venueImage != null) {
+        _state = _state.copyWith(isUploadingImage: true);
+        notifyListeners();
+
+        final imageUrl = await _cloudinary.uploadVenueImage(
+          _state.venueImage!,
+          _state.originalVenueId!,
+        );
+
+        if (imageUrl != null) {
+          await _repo.updateVenueImage(_state.originalVenueId!, imageUrl);
+        }
+
+        _state = _state.copyWith(isUploadingImage: false);
+        notifyListeners();
+      }
+
+      _state = _state.copyWith(
+        isSaving: false,
+        successVenueId: _state.originalVenueId,
       );
       notifyListeners();
     } catch (e) {

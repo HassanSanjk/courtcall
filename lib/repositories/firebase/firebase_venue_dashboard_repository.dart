@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../venue_dashboard_repository.dart';
 
 class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
@@ -18,6 +19,7 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
 
     String venueName = '';
     String ownerName = '';
+    String imageUrl = '';
     List<String> courtNames = [];
     List<Map<String, dynamic>> todaySlots = [];
     List<Map<String, dynamic>> upcomingSessions = [];
@@ -25,8 +27,14 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
     void emit() {
       final schedule = _buildSchedule(todaySlots, courtNames);
       final todayBookings = todaySlots.where((s) => s['status'] == 'booked').length;
-      final revenue = _computeExpectedRevenue(todaySlots);
+      final revenue = _computeExpectedRevenue(upcomingSessions);
       final bookings = _buildUpcomingBookings(upcomingSessions);
+
+      debugPrint('[VenueDashboard] slots=${todaySlots.length} courts=${courtNames.length}');
+      if (todaySlots.isNotEmpty) {
+        final sample = todaySlots.first;
+        debugPrint('[VenueDashboard] sample slot: ${sample['dateTimestamp']} status=${sample['status']}');
+      }
 
       if (!controller.isClosed) {
         controller.add({
@@ -38,6 +46,7 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
           'courtNames': courtNames,
           'schedule': schedule,
           'upcomingBookings': bookings,
+          'imageUrl': imageUrl,
         });
       }
     }
@@ -48,8 +57,9 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
       venueName = data['name'] ?? '';
       courtNames = List<String>.from(data['courts'] ?? []);
       ownerName = data['ownerName'] as String? ?? 'Owner';
+      imageUrl = data['imageUrl'] as String? ?? '';
       emit();
-    });
+    }, onError: (e) => print('Venue dashboard — venue stream error: $e'));
 
     final todayStart = _startOfToday();
     final todayEnd = todayStart.add(const Duration(days: 1));
@@ -73,12 +83,14 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
         };
       }).toList();
       emit();
-    });
+    }, onError: (e) => print('Venue dashboard — slots stream error: $e'));
 
     sessionsSub = _db
         .collection('sessions')
         .where('venueId', isEqualTo: venueId)
         .where('status', isEqualTo: 'upcoming')
+        .where('dateTimestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(_startOfToday()))
         .orderBy('dateTimestamp', descending: false)
         .snapshots()
         .listen((snapshot) {
@@ -87,14 +99,17 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
         return {
           'id': data['sessionId'] ?? doc.id,
           'time': data['time'] ?? '',
-          'sessionName': '${data['venueName']} — ${data['court']}',
+          'date': data['date'] ?? '',
+          'sessionName': '${data['venueName']} - ${data['court']}',
           'playerName': data['organizerName'] ?? '',
           'court': data['court'] ?? '',
           'isTentative': false,
+          'costPerPlayer': (data['costPerPlayer'] ?? 0).toDouble(),
+          'rsvpCount': (data['rsvpCount'] ?? 0) as int,
         };
       }).toList();
       emit();
-    });
+    }, onError: (e) => print('Venue dashboard — sessions stream error: $e'));
 
     controller.onCancel = () {
       venueSub?.cancel();
@@ -134,15 +149,17 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
     }).toList();
   }
 
-  String _computeExpectedRevenue(List<Map<String, dynamic>> slots) {
-    final booked = slots.where((s) => s['status'] == 'booked').length;
-    return '${(booked * 50)}'; // rough estimate: RM 50 per slot
+  String _computeExpectedRevenue(List<Map<String, dynamic>> sessions) {
+    final total = sessions.fold<double>(
+      0, (sum, s) => sum + (s['costPerPlayer'] as double) * (s['rsvpCount'] as int));
+    return total.toStringAsFixed(0);
   }
 
   List<Map<String, dynamic>> _buildUpcomingBookings(
       List<Map<String, dynamic>> sessions) {
     return sessions.map((s) => {
       'time': s['time'],
+      'date': s['date'],
       'sessionName': s['sessionName'],
       'playerName': s['playerName'],
       'court': s['court'],

@@ -18,10 +18,22 @@ class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging? _fcm;
   final FlutterLocalNotificationsPlugin _local =
       FlutterLocalNotificationsPlugin();
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  FirebaseMessaging get _messaging {
+    if (_fcm == null) {
+      try {
+        _fcm = FirebaseMessaging.instance;
+      } catch (e) {
+        debugPrint('[FCM] Failed to initialize: $e');
+        _fcm = null;
+      }
+    }
+    return _fcm!;
+  }
 
   /// Callback invoked when the user taps a notification while app is open.
   void Function(RemoteMessage message)? onMessageTap;
@@ -39,14 +51,19 @@ class NotificationService {
 
   Future<void> init({String? uid}) async {
     // 1. Request permission (iOS + Android 13+)
-    final settings = await _fcm.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
-    if (settings.authorizationStatus == AuthorizationStatus.denied) {
-      debugPrint('[FCM] Notification permission denied.');
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        debugPrint('[FCM] Notification permission denied.');
+        return;
+      }
+    } catch (e) {
+      debugPrint('[FCM] Permission request failed: $e');
       return;
     }
 
@@ -78,46 +95,51 @@ class NotificationService {
           ),
         );
 
-    // 4. Token management — FIX: persist to Firestore so backend can target
-    // this device. Requires uid from the signed-in user (passed via init).
-    final token = await _fcm.getToken();
-    debugPrint('[FCM] Token: $token');
-    if (uid != null) _currentUid = uid;
-    if (token != null && _currentUid != null) {
-      await _persistToken(_currentUid!, token);
+    // 4. Token management
+    try {
+      final token = await _messaging.getToken();
+      debugPrint('[FCM] Token: $token');
+      if (uid != null) _currentUid = uid;
+      if (token != null && _currentUid != null) {
+        await _persistToken(_currentUid!, token);
+      }
+    } catch (e) {
+      debugPrint('[FCM] Token retrieval failed: $e');
     }
 
-    _fcm.onTokenRefresh.listen((newToken) {
+    _messaging.onTokenRefresh.listen((newToken) {
       debugPrint('[FCM] Token refreshed: $newToken');
       if (_currentUid != null) {
         _persistToken(_currentUid!, newToken);
       }
     });
 
-    // 5. Foreground messages → show local notification
-    FirebaseMessaging.onMessage.listen(_handleForeground);
-
-    // 6. Background/terminated tap → app opened via notification
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      onMessageTap?.call(message);
-    });
-
-    // 7. Check if app was launched from a terminated notification
-    final initial = await _fcm.getInitialMessage();
-    if (initial != null) {
-      onMessageTap?.call(initial);
+    // 5. Foreground messages
+    try {
+      FirebaseMessaging.onMessage.listen(_handleForeground);
+      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        onMessageTap?.call(message);
+      });
+      final initial = await _messaging.getInitialMessage();
+      if (initial != null) {
+        onMessageTap?.call(initial);
+      }
+    } catch (e) {
+      debugPrint('[FCM] Message listeners failed: $e');
     }
   }
 
   /// Call this after sign-in to attach the FCM token to the authenticated user.
   Future<void> attachToUser(String uid) async {
     _currentUid = uid;
-    final token = await _fcm.getToken();
-    if (token != null) {
-      await _persistToken(uid, token);
+    try {
+      final token = await _messaging.getToken();
+      if (token != null) {
+        await _persistToken(uid, token);
+      }
+    } catch (e) {
+      debugPrint('[FCM] attachToUser failed: $e');
     }
-    // The onTokenRefresh listener registered in init() now reads _currentUid,
-    // so no need to re-register it here — just updating _currentUid is enough.
   }
 
   Future<void> _persistToken(String uid, String token) async {
@@ -152,12 +174,22 @@ class NotificationService {
   }
 
   /// Subscribe to a topic (e.g. session-specific broadcasts).
-  Future<void> subscribeToSession(String sessionId) =>
-      _fcm.subscribeToTopic('session_$sessionId');
+  Future<void> subscribeToSession(String sessionId) async {
+    try {
+      await _messaging.subscribeToTopic('session_$sessionId');
+    } catch (e) {
+      debugPrint('[FCM] subscribeToSession failed: $e');
+    }
+  }
 
   /// Unsubscribe from a session topic on decline/leave.
-  Future<void> unsubscribeFromSession(String sessionId) =>
-      _fcm.unsubscribeFromTopic('session_$sessionId');
+  Future<void> unsubscribeFromSession(String sessionId) async {
+    try {
+      await _messaging.unsubscribeFromTopic('session_$sessionId');
+    } catch (e) {
+      debugPrint('[FCM] unsubscribeFromSession failed: $e');
+    }
+  }
 }
 
 /// Background message handler — must be a top-level function.

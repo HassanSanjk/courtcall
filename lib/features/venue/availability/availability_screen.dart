@@ -10,8 +10,9 @@ import 'availability_viewmodel.dart';
 
 class AvailabilityScreen extends StatelessWidget {
   final String venueId;
+  final List<String> courts;
 
-  const AvailabilityScreen({super.key, required this.venueId, this.repo});
+  const AvailabilityScreen({super.key, required this.venueId, required this.courts, this.repo});
 
   final AvailabilityRepository? repo;
 
@@ -21,6 +22,7 @@ class AvailabilityScreen extends StatelessWidget {
       create: (_) => AvailabilityViewModel(
         repo: repo ?? FirebaseAvailabilityRepository(),
         venueId: venueId,
+        courts: courts,
       ),
       child: _AvailabilityBody(venueId: venueId),
     );
@@ -90,7 +92,7 @@ class _AvailabilityBody extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _NavArrow(icon: Icons.chevron_left, onTap: vm.previousWeek),
+          _NavArrow(icon: Icons.chevron_left, onTap: vm.canGoBack ? vm.previousWeek : null),
           Text(vm.weekRangeLabel,
               style: const TextStyle(
                   fontSize: 14,
@@ -288,7 +290,7 @@ class _SlotRow extends StatelessWidget {
   });
 
   bool get _canToggle =>
-      slot['status'] == 'available' || slot['status'] == 'open';
+      slot['status'] == 'available' || slot['status'] == 'open' || slot['status'] == 'blocked';
 
   @override
   Widget build(BuildContext context) {
@@ -366,23 +368,27 @@ class _Badge extends StatelessWidget {
 
 class _NavArrow extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
-  const _NavArrow({required this.icon, required this.onTap});
+  const _NavArrow({required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.outline),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: onTap != null ? 1.0 : 0.35,
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.outline),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.onSurfaceVariant),
         ),
-        child: Icon(icon, size: 18, color: AppColors.onSurfaceVariant),
       ),
     );
   }

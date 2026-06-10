@@ -42,6 +42,9 @@ class AnalyticsViewModel extends ChangeNotifier {
       _data = data;
       isLoading = false;
       notifyListeners();
+    }, onError: (e) {
+      isLoading = false;
+      notifyListeners();
     });
   }
 

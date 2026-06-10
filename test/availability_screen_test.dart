@@ -16,7 +16,7 @@ void main() {
     when(() => repo.watchSlots(any(), any())).thenAnswer((_) => controller.stream);
 
     await tester.pumpWidget(
-      testAppBuilder(AvailabilityScreen(venueId: 'test_venue', repo: repo)),
+      testAppBuilder(AvailabilityScreen(venueId: 'test_venue', courts: ['Court 1', 'Court 2'], repo: repo)),
     );
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);

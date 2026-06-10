@@ -8,6 +8,7 @@ import '../../../repositories/session_repository.dart';
 import '../../../repositories/payment_repository.dart';
 import '../../../repositories/rsvp_repository.dart';
 import '../../../repositories/venue_repository.dart';
+import '../../../repositories/availability_repository.dart';
 import '../../auth/auth_viewmodel.dart';
 import '../../auth/login/login_screen.dart';
 import '../create_session/create_session_screen.dart';
@@ -75,6 +76,7 @@ class _DashboardView extends StatelessWidget {
           create: (_) => CreateSessionViewModel(
             sessionRepo: context.read<SessionRepository>(),
             venueRepo: context.read<VenueRepository>(),
+            availabilityRepo: context.read<AvailabilityRepository>(),
             organizerId: organizerId,
           ),
           child: const CreateSessionScreen(),
@@ -209,7 +211,7 @@ class _KpiRow extends StatelessWidget {
             Expanded(
               child: KpiCard(
                 label: 'Pending Pay',
-                value: vm.unpaidCount > 0 ? '${vm.unpaidCount}' : '—',
+                value: vm.unpaidCount > 0 ? '${vm.unpaidCount}' : '-',
                 icon: Icons.payments_outlined,
                 accentColor: AppColors.alertAmber,
               ),

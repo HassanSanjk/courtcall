@@ -63,12 +63,13 @@ class VenueDashboardViewModel extends ChangeNotifier {
     _sub = _repo.watchDashboardData(_venueId).listen((data) {
       _state = _state.copyWith(data: data, isLoading: false);
       notifyListeners();
+    }, onError: (e) {
+      _state = _state.copyWith(isLoading: false);
+      notifyListeners();
     });
   }
 
   Future<void> refresh() async {
-    _state = _state.copyWith(isLoading: true);
-    notifyListeners();
     _init();
   }
 

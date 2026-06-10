@@ -8,6 +8,8 @@ import 'mocks/mock_session_repository.dart';
 import 'mocks/mock_payment_repository.dart';
 import 'mocks/mock_rsvp_repository.dart';
 import 'mocks/mock_venue_repository.dart';
+import 'mocks/mock_availability_repository.dart';
+import 'package:courtcall/repositories/availability_repository.dart';
 import 'package:courtcall/repositories/venue_repository.dart';
 import 'package:courtcall/repositories/auth_repository.dart';
 import 'package:courtcall/features/auth/auth_viewmodel.dart';
@@ -33,7 +35,7 @@ final mockSession = Session(
   court: 'Court 3',
   date: 'Friday, 9 May',
   dateTimestamp: DateTime(2026, 5, 9),
-  time: '8:00 PM–10:00 PM',
+  time: '8:00 PM-10:00 PM',
   maxPlayers: 12,
   rsvpCount: 7,
   costPerPlayer: 15.0,
@@ -77,6 +79,9 @@ void main() {
           providers: [
             Provider<SessionRepository>.value(value: repo),
             Provider<VenueRepository>.value(value: venueRepo),
+            Provider<AvailabilityRepository>(
+              create: (_) => MockAvailabilityRepository(),
+            ),
           ],
           child: wrapApp(
             ChangeNotifierProvider(

@@ -20,7 +20,7 @@ class MockPlayerRepository implements PlayerRepository {
       court: 'Court 3',
       date: 'Friday, 9 May',
       dateTimestamp: DateTime(2025, 5, 9, 20, 0),
-      time: '8:00PM–10:00PM',
+      time: '8:00PM-10:00PM',
       maxPlayers: 12,
       rsvpCount: 8,
       costPerPlayer: 15.0,
@@ -36,7 +36,7 @@ class MockPlayerRepository implements PlayerRepository {
       court: 'Court 1',
       date: 'Sunday, 11 May',
       dateTimestamp: DateTime(2025, 5, 11, 9, 0),
-      time: '9:00AM–11:00AM',
+      time: '9:00AM-11:00AM',
       maxPlayers: 4,
       rsvpCount: 4,
       costPerPlayer: 18.0,
@@ -52,7 +52,7 @@ class MockPlayerRepository implements PlayerRepository {
       court: 'Court 2',
       date: 'Friday, 2 May',
       dateTimestamp: DateTime(2025, 5, 2, 20, 0),
-      time: '8:00PM–10:00PM',
+      time: '8:00PM-10:00PM',
       maxPlayers: 12,
       rsvpCount: 10,
       costPerPlayer: 15.0,
@@ -68,7 +68,7 @@ class MockPlayerRepository implements PlayerRepository {
       court: 'Court 1',
       date: 'Tuesday, 6 May',
       dateTimestamp: DateTime(2025, 5, 6, 20, 0),
-      time: '8:00PM–10:00PM',
+      time: '8:00PM-10:00PM',
       maxPlayers: 10,
       rsvpCount: 8,
       costPerPlayer: 15.0,
@@ -236,7 +236,7 @@ class MockPlayerRepository implements PlayerRepository {
     _rsvpControllers[sessionId]?.add(rsvps);
   }
 
-  /// FIX: Implements the interface method — no longer a mock-specific helper.
+  /// FIX: Implements the interface method - no longer a mock-specific helper.
   /// The real Firebase implementation should query confirmed RSVPs for the
   /// session and return their playerName values.
   @override
@@ -251,7 +251,7 @@ class MockPlayerRepository implements PlayerRepository {
     required String playerName,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    // Mock — no-op; position logic handled by Firestore transaction in real impl.
+    // Mock - no-op; position logic handled by Firestore transaction in real impl.
   }
 
   @override

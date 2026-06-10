@@ -43,7 +43,7 @@ void main() {
 
   group('AvailabilityViewModel', () {
     test('loads slots from mock repo and groups by day', () async {
-      final vm = AvailabilityViewModel(venueId: _testVenueId, repo: MockAvailabilityRepository());
+      final vm = AvailabilityViewModel(venueId: _testVenueId, courts: const ['Court 1', 'Court 2'], repo: MockAvailabilityRepository());
       await Future.delayed(Duration.zero);
 
       expect(vm.isLoading, false);
@@ -52,7 +52,7 @@ void main() {
     });
 
     test('toggleSlot marks slot as available', () async {
-      final vm = AvailabilityViewModel(venueId: _testVenueId, repo: MockAvailabilityRepository());
+      final vm = AvailabilityViewModel(venueId: _testVenueId, courts: const ['Court 1', 'Court 2'], repo: MockAvailabilityRepository());
       await Future.delayed(Duration.zero);
 
       vm.toggleSlot('slot_5', true);
@@ -63,7 +63,7 @@ void main() {
     });
 
     test('toggleSlot does nothing for booked slots', () async {
-      final vm = AvailabilityViewModel(venueId: _testVenueId, repo: MockAvailabilityRepository());
+      final vm = AvailabilityViewModel(venueId: _testVenueId, courts: const ['Court 1', 'Court 2'], repo: MockAvailabilityRepository());
       await Future.delayed(Duration.zero);
 
       vm.toggleSlot('slot_4', true);
@@ -72,7 +72,7 @@ void main() {
     });
 
     test('selectCourt resets hasChanges', () async {
-      final vm = AvailabilityViewModel(venueId: _testVenueId, repo: MockAvailabilityRepository());
+      final vm = AvailabilityViewModel(venueId: _testVenueId, courts: const ['Court 1', 'Court 2'], repo: MockAvailabilityRepository());
       await Future.delayed(Duration.zero);
 
       vm.toggleSlot('slot_5', true);
@@ -83,18 +83,18 @@ void main() {
     });
 
     test('previousWeek and nextWeek update weekStart', () async {
-      final vm = AvailabilityViewModel(venueId: _testVenueId, repo: MockAvailabilityRepository());
+      final vm = AvailabilityViewModel(venueId: _testVenueId, courts: const ['Court 1', 'Court 2'], repo: MockAvailabilityRepository());
       await Future.delayed(Duration.zero);
 
       final original = vm.weekRangeLabel;
-      vm.previousWeek();
-      expect(vm.weekRangeLabel, isNot(original));
       vm.nextWeek();
+      expect(vm.weekRangeLabel, isNot(original));
+      vm.previousWeek();
       expect(vm.weekRangeLabel, original);
     });
 
     test('saveChanges sets isSaving then clears', () async {
-      final vm = AvailabilityViewModel(venueId: _testVenueId, repo: MockAvailabilityRepository());
+      final vm = AvailabilityViewModel(venueId: _testVenueId, courts: const ['Court 1', 'Court 2'], repo: MockAvailabilityRepository());
       await Future.delayed(Duration.zero);
 
       vm.toggleSlot('slot_5', true);

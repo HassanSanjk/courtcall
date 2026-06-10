@@ -25,13 +25,16 @@ class FirebaseAvailabilityRepository implements AvailabilityRepository {
         final data = doc.data();
         final dateTs = data['dateTimestamp'] as Timestamp?;
         final docDate = dateTs?.toDate();
+        final dayStart = DateTime(today.year, today.month, today.day);
         return {
           'id': data['slotId'] ?? doc.id,
           'venueId': data['venueId'],
           'courtIndex': data['courtIndex'],
           'date': data['date'],
+          'dateTimestamp': data['dateTimestamp'],
           'dateLabel': data['dateLabel'] ?? _formatDateLabel(docDate),
           'isToday': _isSameDay(docDate, today),
+          'isPast': docDate != null && docDate.isBefore(dayStart),
           'timeLabel': data['timeLabel'],
           'status': data['status'],
           'isEnabled': data['isEnabled'] ?? false,
@@ -60,6 +63,59 @@ class FirebaseAvailabilityRepository implements AvailabilityRepository {
         'isEnabled': slot['isEnabled'],
         'sessionId': slot['sessionId'],
       }, SetOptions(merge: true));
+    }
+    await batch.commit();
+  }
+
+  @override
+  Future<bool> isSlotAvailable(String venueId, int courtIndex, DateTime startTime, DateTime endTime) async {
+    for (int h = startTime.hour; h < endTime.hour; h++) {
+      final ts = Timestamp.fromDate(DateTime(startTime.year, startTime.month, startTime.day, h));
+      final nextTs = Timestamp.fromDate(ts.toDate().add(const Duration(hours: 1)));
+      final snapshot = await _db
+          .collection('slots')
+          .where('venueId', isEqualTo: venueId)
+          .where('dateTimestamp', isGreaterThanOrEqualTo: ts)
+          .where('dateTimestamp', isLessThan: nextTs)
+          .get();
+
+      bool hourFound = false;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['courtIndex'] == courtIndex) {
+          if (data['status'] != 'available') return false;
+          hourFound = true;
+          break;
+        }
+      }
+      if (!hourFound) return false;
+    }
+    return true;
+  }
+
+  @override
+  Future<void> markSlotBooked(String venueId, int courtIndex, DateTime startTime, DateTime endTime, String sessionId) async {
+    final batch = _db.batch();
+    for (int h = startTime.hour; h < endTime.hour; h++) {
+      final ts = Timestamp.fromDate(DateTime(startTime.year, startTime.month, startTime.day, h));
+      final nextTs = Timestamp.fromDate(ts.toDate().add(const Duration(hours: 1)));
+      final snapshot = await _db
+          .collection('slots')
+          .where('venueId', isEqualTo: venueId)
+          .where('dateTimestamp', isGreaterThanOrEqualTo: ts)
+          .where('dateTimestamp', isLessThan: nextTs)
+          .get();
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['courtIndex'] == courtIndex) {
+          batch.update(doc.reference, {
+            'status': 'booked',
+            'sessionId': sessionId,
+          });
+          break;
+        }
+      }
     }
     await batch.commit();
   }

@@ -7,6 +7,7 @@ import '../../../repositories/availability_repository.dart';
 class AvailabilityViewModel extends ChangeNotifier {
   final AvailabilityRepository _repo;
   final String _venueId;
+  final List<String> courts;
 
   List<Map<String, dynamic>> _slots = [];
   bool isLoading = true;
@@ -16,10 +17,11 @@ class AvailabilityViewModel extends ChangeNotifier {
   String _weekStart = _todayWeekStart();
   StreamSubscription? _sub;
 
-  final List<String> courts = ['Court 1', 'Court 2', 'Court 3', 'VIP Court'];
-
-  AvailabilityViewModel({required AvailabilityRepository repo, required String venueId})
-      : _repo = repo,
+  AvailabilityViewModel({
+    required AvailabilityRepository repo,
+    required String venueId,
+    required this.courts,
+  })  : _repo = repo,
         _venueId = venueId {
     _init();
   }
@@ -38,6 +40,7 @@ class AvailabilityViewModel extends ChangeNotifier {
     final Map<String, Map<String, dynamic>> grouped = {};
     for (final slot in _slots) {
       if (slot['courtIndex'] != selectedCourtIndex) continue;
+      if (slot['isPast'] == true) continue;
       final date = slot['date'] as String;
       grouped.putIfAbsent(date, () => {
         'date': date,
@@ -50,12 +53,18 @@ class AvailabilityViewModel extends ChangeNotifier {
     return grouped.values.toList();
   }
 
+  bool get canGoBack {
+    final currentWeekStart = DateTime.parse(_todayWeekStart());
+    final currentStart = DateTime.parse(_weekStart);
+    return currentStart.isAfter(currentWeekStart);
+  }
+
   String get weekRangeLabel {
     final start = DateTime.parse(_weekStart);
     final end = start.add(const Duration(days: 6));
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return '${days[start.weekday - 1]}, ${start.day} ${months[start.month - 1]} – '
+    return '${days[start.weekday - 1]}, ${start.day} ${months[start.month - 1]} - '
         '${days[end.weekday - 1]}, ${end.day} ${months[end.month - 1]}';
   }
 
@@ -63,6 +72,9 @@ class AvailabilityViewModel extends ChangeNotifier {
     _sub?.cancel();
     _sub = _repo.watchSlots(_venueId, _weekStart).listen((list) {
       _slots = list.cast<Map<String, dynamic>>();
+      isLoading = false;
+      notifyListeners();
+    }, onError: (e) {
       isLoading = false;
       notifyListeners();
     });
@@ -75,6 +87,7 @@ class AvailabilityViewModel extends ChangeNotifier {
   }
 
   void previousWeek() {
+    if (!canGoBack) return;
     final date = DateTime.parse(_weekStart).subtract(const Duration(days: 7));
     _weekStart = date.toIso8601String().substring(0, 10);
     _init();
@@ -89,11 +102,11 @@ class AvailabilityViewModel extends ChangeNotifier {
   void toggleSlot(String slotId, bool value) {
     _slots = _slots.map((s) {
       if (s['id'] == slotId &&
-          (s['status'] == 'available' || s['status'] == 'open')) {
+          (s['status'] == 'available' || s['status'] == 'open' || s['status'] == 'blocked')) {
         return {
           ...s,
           'isEnabled': value,
-          'status': value ? 'available' : 'open',
+          'status': value ? 'available' : 'blocked',
         };
       }
       return s;

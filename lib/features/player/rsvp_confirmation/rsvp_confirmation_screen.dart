@@ -544,7 +544,7 @@ class _WaitlistCard extends StatelessWidget {
                 color: AppColors.amber, size: 20),
             const SizedBox(width: 8),
             const Text(
-              'Session Full — Join Waitlist',
+              'Session Full - Join Waitlist',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -633,7 +633,7 @@ class _ConsequenceBanner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Heads up — if you leave, the session may be underpaid. '
+              'Heads up - if you leave, the session may be underpaid. '
               'Only $spotsRemaining spot${spotsRemaining == 1 ? '' : 's'} remaining.',
               style: const TextStyle(
                 fontSize: 13,

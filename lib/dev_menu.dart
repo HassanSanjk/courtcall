@@ -5,9 +5,6 @@ import 'seed_firestore.dart';
 import 'features/player/payment_history/payment_history_screen.dart';
 import 'core/widgets/player_shell_screen.dart';
 import 'features/venue/venue_dashboard/venue_dashboard_screen.dart';
-import 'features/venue/availability/availability_screen.dart';
-import 'features/venue/cancellation_alert/cancellation_alert_screen.dart';
-import 'features/venue/analytics/analytics_screen.dart';
 import 'features/organizer/dashboard/dashboard_screen.dart';
 
 class DevMenu extends StatelessWidget {
@@ -19,9 +16,6 @@ class DevMenu extends StatelessWidget {
       ('Player: Session Feed', '/player/session-feed'),
       ('Player: Payment History', '/player/payment-history'),
       ('Venue Dashboard', '/venue/dashboard'),
-      ('Availability', '/venue/availability'),
-      ('Cancellation Alert', '/venue/cancellation-alert'),
-      ('Analytics', '/venue/analytics'),
       ('Organizer Dashboard', '/organizer/dashboard'),
     ];
 
@@ -99,9 +93,6 @@ class DevMenu extends StatelessWidget {
                         '/player/session-feed' => const PlayerShellScreen(),
                         '/player/payment-history' => const PaymentHistoryScreen(),
                         '/venue/dashboard' => const VenueDashboardScreen(),
-                        '/venue/availability' => const AvailabilityScreen(venueId: ''),
-                        '/venue/cancellation-alert' => const CancellationAlertScreen(venueId: ''),
-                        '/venue/analytics' => const AnalyticsScreen(venueId: ''),
                         '/organizer/dashboard' => const DashboardScreen(),
                         _ => const Scaffold(body: Center(child: Text('Unknown path'))),
                       };
