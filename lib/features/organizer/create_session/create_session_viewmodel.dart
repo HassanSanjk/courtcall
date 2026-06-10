@@ -123,7 +123,7 @@ class CreateSessionViewModel extends ChangeNotifier {
       );
 
       if (_availabilityRepo != null && courtIndex >= 0) {
-        final available = await _availabilityRepo!
+        final available = await _availabilityRepo
             .isSlotAvailable(selectedVenue!.venueId, courtIndex, slotStart, slotEnd);
         if (!available) {
           errorMessage =
@@ -157,7 +157,7 @@ class CreateSessionViewModel extends ChangeNotifier {
       );
 
       if (_availabilityRepo != null && courtIndex >= 0) {
-        await _availabilityRepo!.markSlotBooked(
+        await _availabilityRepo.markSlotBooked(
           selectedVenue!.venueId, courtIndex, slotStart, slotEnd, sessionId,
         );
       }
