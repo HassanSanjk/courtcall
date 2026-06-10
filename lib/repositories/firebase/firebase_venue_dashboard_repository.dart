@@ -30,12 +30,6 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
       final revenue = _computeExpectedRevenue(upcomingSessions);
       final bookings = _buildUpcomingBookings(upcomingSessions);
 
-      debugPrint('[VenueDashboard] slots=${todaySlots.length} courts=${courtNames.length}');
-      if (todaySlots.isNotEmpty) {
-        final sample = todaySlots.first;
-        debugPrint('[VenueDashboard] sample slot: ${sample['dateTimestamp']} status=${sample['status']}');
-      }
-
       if (!controller.isClosed) {
         controller.add({
           'venueId': venueId,
@@ -59,7 +53,7 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
       ownerName = data['ownerName'] as String? ?? 'Owner';
       imageUrl = data['imageUrl'] as String? ?? '';
       emit();
-    }, onError: (e) => print('Venue dashboard — venue stream error: $e'));
+    }, onError: (e) => debugPrint('Venue dashboard - venue stream error: $e'));
 
     final todayStart = _startOfToday();
     final todayEnd = todayStart.add(const Duration(days: 1));
@@ -83,7 +77,7 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
         };
       }).toList();
       emit();
-    }, onError: (e) => print('Venue dashboard — slots stream error: $e'));
+    }, onError: (e) => debugPrint('Venue dashboard - slots stream error: $e'));
 
     sessionsSub = _db
         .collection('sessions')
@@ -109,7 +103,7 @@ class FirebaseVenueDashboardRepository implements VenueDashboardRepository {
         };
       }).toList();
       emit();
-    }, onError: (e) => print('Venue dashboard — sessions stream error: $e'));
+    }, onError: (e) => debugPrint('Venue dashboard - sessions stream error: $e'));
 
     controller.onCancel = () {
       venueSub?.cancel();
