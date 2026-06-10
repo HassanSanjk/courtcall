@@ -150,24 +150,26 @@ Widget _buildHeader(BuildContext context, VenueDashboardState state, String venu
   return Padding(
     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
     child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              state.venueName,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.onSurface,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                state.venueName,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurface,
+                ),
               ),
-            ),
-            Text(
-              state.greeting,
-              style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
-            ),
-          ],
+              Text(
+                state.greeting,
+                style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
         Row(
           children: [
